@@ -74,6 +74,10 @@ def curate_briefing(
     top_items = []
     for p in top_candidates:
         if p.id not in used_ids:
+            # TOP STORIES requires meaningful engagement
+            m = p.metrics
+            if m.likes < 50 and m.reposts < 10 and m.views < 5000:
+                continue
             user = users.get(p.author_id)
             followers = user.followers_count if user else 100
             s = score_post(p, followers)

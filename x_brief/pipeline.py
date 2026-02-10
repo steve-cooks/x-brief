@@ -106,7 +106,76 @@ async def run_briefing(config_path: str, hours: int = 24) -> str:
         print(output)
         print(f"{'='*60}")
         
+        # 8. Export JSON for web frontend
+        json_data = export_briefing_json(briefing, users_map, hours)
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+        os.makedirs(data_dir, exist_ok=True)
+        json_path = os.path.join(data_dir, "latest-briefing.json")
+        import json as json_mod
+        with open(json_path, "w") as f:
+            json_mod.dump(json_data, f, indent=2, default=str)
+        print(f"📄 JSON exported to {json_path}")
+        
         return output
+
+
+def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
+    """Export briefing as JSON for the web frontend."""
+    sections = []
+    for section in briefing.sections:
+        posts = []
+        for item in section.items:
+            post = item.post
+            user = users_map.get(post.author_id)
+            avatar_url = user.profile_image_url if user else None
+            # Get higher res avatar (replace _normal with _bigger or _400x400)
+            if avatar_url:
+                avatar_url = avatar_url.replace("_normal", "_400x400")
+            
+            verified_type = user.verified_type if user else None
+            
+            posts.append({
+                "authorName": post.author_name or (user.name if user else post.author_username),
+                "authorUsername": post.author_username or (user.username if user else "unknown"),
+                "authorAvatarUrl": avatar_url,
+                "verified": verified_type,
+                "text": post.text,
+                "metrics": {
+                    "likes": post.metrics.likes,
+                    "reposts": post.metrics.reposts,
+                    "views": post.metrics.views,
+                    "replies": post.metrics.replies,
+                },
+                "postUrl": f"https://x.com/{post.author_username or 'x'}/status/{post.id}",
+                "timestamp": _relative_time(post.created_at),
+                "category": item.category if item.category not in ("Top", "Worth a Look") else None,
+            })
+        sections.append({
+            "title": section.title,
+            "emoji": section.emoji,
+            "posts": posts,
+        })
+    
+    return {
+        "generated_at": briefing.generated_at.isoformat(),
+        "period_hours": hours,
+        "sections": sections,
+        "stats": briefing.stats,
+    }
+
+
+def _relative_time(dt) -> str:
+    """Convert datetime to relative time string."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    diff = now - dt
+    hours = diff.total_seconds() / 3600
+    if hours < 1:
+        return f"{int(diff.total_seconds() / 60)}m"
+    elif hours < 24:
+        return f"{int(hours)}h"
+    else:
+        return f"{int(hours / 24)}d"
 
 def main():
     """CLI entry point."""
