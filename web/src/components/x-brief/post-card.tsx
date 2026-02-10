@@ -142,26 +142,14 @@ export function PostCard({
                 )}
 
                 {/* Video */}
-                {item.type === "video" && (
-                  <a
-                    href={postUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full h-full group"
-                  >
-                    {item.preview_image_url && (
-                      <img
-                        src={item.preview_image_url}
-                        alt="Video thumbnail"
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
-                      <div className="bg-blue-500 group-hover:bg-blue-600 rounded-full p-4 transition-colors">
-                        <Play className="h-8 w-8 text-white fill-white" />
-                      </div>
-                    </div>
-                  </a>
+                {item.type === "video" && item.video_url && (
+                  <video
+                    src={item.video_url}
+                    poster={item.preview_image_url}
+                    controls
+                    className="w-full h-full object-cover rounded-inherit"
+                    preload="metadata"
+                  />
                 )}
 
                 {/* Animated GIF */}
@@ -170,11 +158,12 @@ export function PostCard({
                     {item.video_url ? (
                       <video
                         src={item.video_url}
+                        poster={item.preview_image_url}
                         loop
                         autoPlay
                         muted
                         playsInline
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover rounded-inherit"
                       />
                     ) : item.preview_image_url ? (
                       <img
