@@ -141,14 +141,17 @@ export function PostCard({
                   />
                 )}
 
-                {/* Video */}
+                {/* Video — auto-play muted like X, with controls */}
                 {item.type === "video" && item.video_url && (
                   <video
                     src={item.video_url}
                     poster={item.preview_image_url}
                     controls
+                    autoPlay
+                    muted
+                    playsInline
                     className="w-full h-full object-cover rounded-inherit"
-                    preload="metadata"
+                    preload="auto"
                   />
                 )}
 
