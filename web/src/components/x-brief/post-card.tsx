@@ -150,6 +150,9 @@ export function PostCard({
                     autoPlay
                     muted
                     playsInline
+                    // @ts-expect-error referrerPolicy is valid on video elements
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                     className="w-full h-full object-cover rounded-inherit"
                     preload="auto"
                   />
@@ -166,6 +169,9 @@ export function PostCard({
                         autoPlay
                         muted
                         playsInline
+                        // @ts-expect-error referrerPolicy is valid on video elements
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
                         className="w-full h-full object-cover rounded-inherit"
                       />
                     ) : item.preview_image_url ? (

@@ -17,6 +17,13 @@ interface BriefingData {
       authorAvatarUrl?: string
       verified?: string | null
       text: string
+      media?: Array<{
+        type: string
+        url?: string
+        preview_image_url?: string
+        video_url?: string
+        alt_text?: string
+      }>
       metrics?: { likes?: number; reposts?: number; views?: number }
       postUrl?: string
       timestamp?: string
