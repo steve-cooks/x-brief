@@ -2,7 +2,16 @@
 
 import { Heart, Repeat2, Eye, ExternalLink, Play } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState } from "react"
+import { useState, useMemo } from "react"
+
+/** Proxy Twitter video/image URLs through our API to avoid referer blocking */
+function proxyUrl(url: string | undefined | null): string | undefined {
+  if (!url) return undefined
+  if (url.includes("video.twimg.com") || (url.includes("pbs.twimg.com") && url.includes("video"))) {
+    return `/api/media?url=${encodeURIComponent(url)}`
+  }
+  return url
+}
 
 interface PostMetrics {
   likes?: number
@@ -141,18 +150,15 @@ export function PostCard({
                   />
                 )}
 
-                {/* Video — auto-play muted like X, with controls */}
+                {/* Video — auto-play muted like X, proxied to avoid referer blocking */}
                 {item.type === "video" && item.video_url && (
                   <video
-                    src={item.video_url}
-                    poster={item.preview_image_url}
+                    src={proxyUrl(item.video_url)}
+                    poster={proxyUrl(item.preview_image_url)}
                     controls
                     autoPlay
                     muted
                     playsInline
-                    // @ts-expect-error referrerPolicy is valid on video elements
-                    referrerPolicy="no-referrer"
-                    crossOrigin="anonymous"
                     className="w-full h-full object-cover rounded-inherit"
                     preload="auto"
                   />
@@ -163,15 +169,12 @@ export function PostCard({
                   <div className="relative w-full h-full">
                     {item.video_url ? (
                       <video
-                        src={item.video_url}
-                        poster={item.preview_image_url}
+                        src={proxyUrl(item.video_url)}
+                        poster={proxyUrl(item.preview_image_url)}
                         loop
                         autoPlay
                         muted
                         playsInline
-                        // @ts-expect-error referrerPolicy is valid on video elements
-                        referrerPolicy="no-referrer"
-                        crossOrigin="anonymous"
                         className="w-full h-full object-cover rounded-inherit"
                       />
                     ) : item.preview_image_url ? (
