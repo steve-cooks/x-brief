@@ -211,3 +211,21 @@
     @apply text-sm text-muted-foreground;
   }
 }
+
+/* Utility classes */
+@layer utilities {
+  /* Hide scrollbar for horizontal tabs like X */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+  
+  /* Smooth scroll */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+}

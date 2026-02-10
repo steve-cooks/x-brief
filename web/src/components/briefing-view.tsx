@@ -98,15 +98,15 @@ export function BriefingView() {
         <Tabs defaultValue={briefing.sections[0].title} className="w-full">
           {/* Tab navigation - X style */}
           <div className="sticky top-[57px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-            <div className="max-w-2xl mx-auto">
-              <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex justify-start overflow-x-auto scrollbar-hide">
+            <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
+              <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 inline-flex justify-start min-w-full">
                 {briefing.sections.map((section) => (
                   <TabsTrigger
                     key={section.title}
                     value={section.title}
-                    className="relative flex-shrink-0 px-4 py-4 rounded-none border-0 bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 data-[state=active]:text-gray-900 data-[state=active]:bg-transparent dark:data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1 after:bg-blue-500 after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-opacity"
+                    className="relative flex-shrink-0 px-4 py-4 rounded-none border-0 bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 data-[state=active]:text-gray-900 data-[state=active]:bg-transparent dark:data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:font-semibold transition-colors after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[3px] after:bg-blue-500 after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                   >
-                    <span className="flex items-center gap-2 text-[15px]">
+                    <span className="flex items-center gap-2 text-[15px] whitespace-nowrap">
                       <span>{section.emoji}</span>
                       <span className="hidden sm:inline">{section.title}</span>
                       <span className="sm:hidden">{section.title.split(' ')[0]}</span>
@@ -137,7 +137,10 @@ export function BriefingView() {
                 {/* Posts feed */}
                 <div className="divide-y divide-gray-100 dark:divide-gray-900">
                   {section.posts.map((post, index) => (
-                    <div key={`${post.authorUsername}-${index}`} className="px-4 py-3">
+                    <div
+                      key={`${post.authorUsername}-${index}`}
+                      className="px-4 py-3 hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors cursor-pointer"
+                    >
                       <PostCard {...post} />
                     </div>
                   ))}

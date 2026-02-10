@@ -46,10 +46,10 @@ export function PostCard({
     .slice(0, 2)
 
   return (
-    <article className="flex gap-3 group">
+    <article className="flex gap-3 group min-h-[44px]">
       {/* Avatar */}
       <div className="flex-shrink-0">
-        <Avatar className="h-10 w-10">
+        <Avatar className="h-10 w-10 hover:opacity-90 transition-opacity cursor-pointer">
           {authorAvatarUrl && (
             <AvatarImage src={authorAvatarUrl} alt={authorName} />
           )}
@@ -113,7 +113,10 @@ export function PostCard({
           <div className="mt-3 flex items-center gap-6">
             {/* Likes */}
             {metrics.likes !== undefined && metrics.likes > 0 && (
-              <button className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-500 group/like transition-colors">
+              <button
+                className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-500 group/like transition-colors -ml-2 p-2 rounded-full hover:bg-pink-50 dark:hover:bg-pink-950/30"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <Heart className="h-[18px] w-[18px] group-hover/like:fill-pink-600 dark:group-hover/like:fill-pink-500 transition-all" />
                 <span className="text-[13px] font-normal">
                   {formatNumber(metrics.likes)}
@@ -123,7 +126,10 @@ export function PostCard({
 
             {/* Reposts */}
             {metrics.reposts !== undefined && metrics.reposts > 0 && (
-              <button className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-500 group/repost transition-colors">
+              <button
+                className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-500 group/repost transition-colors p-2 rounded-full hover:bg-green-50 dark:hover:bg-green-950/30"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <Repeat2 className="h-[18px] w-[18px] transition-all" />
                 <span className="text-[13px] font-normal">
                   {formatNumber(metrics.reposts)}
@@ -133,7 +139,7 @@ export function PostCard({
 
             {/* Views */}
             {metrics.views !== undefined && metrics.views > 0 && (
-              <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 p-2">
                 <Eye className="h-[18px] w-[18px]" />
                 <span className="text-[13px] font-normal">
                   {formatNumber(metrics.views)}
@@ -147,7 +153,8 @@ export function PostCard({
                 href={postUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors"
+                className="ml-auto flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors p-2 rounded-full hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink className="h-[18px] w-[18px]" />
               </a>
