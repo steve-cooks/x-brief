@@ -59,6 +59,8 @@ class XClient:
             description=user_data.get("description"),
             followers_count=metrics.get("followers_count", 0),
             verified=user_data.get("verified", False),
+            verified_type=user_data.get("verified_type"),
+            profile_image_url=user_data.get("profile_image_url"),
         )
     
     def _parse_post(
@@ -122,7 +124,7 @@ class XClient:
         """Get user by username"""
         url = f"{self.BASE_URL}/users/by/username/{username}"
         params = {
-            "user.fields": "id,username,name,description,public_metrics,verified"
+            "user.fields": "id,username,name,description,public_metrics,verified,profile_image_url,verified_type"
         }
         
         try:
@@ -156,7 +158,7 @@ class XClient:
         url = f"{self.BASE_URL}/users/by"
         params = {
             "usernames": ",".join(usernames),
-            "user.fields": "id,username,name,description,public_metrics,verified"
+            "user.fields": "id,username,name,description,public_metrics,verified,profile_image_url,verified_type"
         }
         
         try:
@@ -190,7 +192,7 @@ class XClient:
         params = {
             "max_results": min(max_results, 100),  # API max is 100
             "tweet.fields": "id,text,created_at,public_metrics,entities,referenced_tweets,author_id,conversation_id,lang",
-            "user.fields": "id,username,name,description,public_metrics,verified",
+            "user.fields": "id,username,name,description,public_metrics,verified,profile_image_url,verified_type",
             "expansions": "author_id,referenced_tweets.id",
         }
         
@@ -258,7 +260,7 @@ class XClient:
             "query": query,
             "max_results": min(max_results, 100),
             "tweet.fields": "id,text,created_at,public_metrics,entities,referenced_tweets,author_id,conversation_id,lang",
-            "user.fields": "id,username,name,description,public_metrics,verified",
+            "user.fields": "id,username,name,description,public_metrics,verified,profile_image_url,verified_type",
             "expansions": "author_id,referenced_tweets.id",
         }
         

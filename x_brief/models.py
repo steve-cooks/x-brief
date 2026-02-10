@@ -42,6 +42,8 @@ class User(BaseModel):
     description: Optional[str] = None
     followers_count: int = 0
     verified: bool = False
+    verified_type: Optional[str] = None  # "blue", "business", "government"
+    profile_image_url: Optional[str] = None
 
 
 class BriefingItem(BaseModel):
