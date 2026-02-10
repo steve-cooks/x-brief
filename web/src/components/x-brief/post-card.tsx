@@ -1,7 +1,8 @@
 "use client"
 
-import { Heart, Repeat2, Eye, ExternalLink } from "lucide-react"
+import { Heart, Repeat2, Eye, ExternalLink, Play } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useState } from "react"
 
 interface PostMetrics {
   likes?: number
@@ -10,12 +11,21 @@ interface PostMetrics {
   replies?: number
 }
 
+interface MediaItem {
+  type: string // "photo", "video", "animated_gif"
+  url?: string
+  preview_image_url?: string
+  video_url?: string
+  alt_text?: string
+}
+
 interface PostCardProps {
   authorName: string
   authorUsername: string
   authorAvatarUrl?: string
   verified?: string | null // "blue", "business", "government"
   text: string
+  media?: MediaItem[]
   metrics?: PostMetrics
   postUrl?: string
   timestamp?: string
@@ -34,10 +44,13 @@ export function PostCard({
   authorAvatarUrl,
   verified,
   text,
+  media,
   metrics,
   postUrl,
   timestamp,
 }: PostCardProps) {
+  const [expandedMedia, setExpandedMedia] = useState<number | null>(null)
+  
   const initials = authorName
     .split(" ")
     .map((n) => n[0])
@@ -107,6 +120,78 @@ export function PostCard({
             {text}
           </p>
         </div>
+
+        {/* Media attachments */}
+        {media && media.length > 0 && (
+          <div className={`mt-3 ${media.length === 1 ? "" : "grid grid-cols-2 gap-0.5"} rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800`}>
+            {media.map((item, index) => (
+              <div
+                key={index}
+                className={`relative bg-gray-100 dark:bg-gray-900 ${
+                  media.length === 1 ? "aspect-video max-h-[500px]" : "aspect-square"
+                }`}
+              >
+                {/* Photo */}
+                {item.type === "photo" && item.url && (
+                  <img
+                    src={item.url}
+                    alt={item.alt_text || "Image"}
+                    className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                    onClick={() => setExpandedMedia(expandedMedia === index ? null : index)}
+                  />
+                )}
+
+                {/* Video */}
+                {item.type === "video" && (
+                  <a
+                    href={postUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full h-full group"
+                  >
+                    {item.preview_image_url && (
+                      <img
+                        src={item.preview_image_url}
+                        alt="Video thumbnail"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                      <div className="bg-blue-500 group-hover:bg-blue-600 rounded-full p-4 transition-colors">
+                        <Play className="h-8 w-8 text-white fill-white" />
+                      </div>
+                    </div>
+                  </a>
+                )}
+
+                {/* Animated GIF */}
+                {item.type === "animated_gif" && (
+                  <div className="relative w-full h-full">
+                    {item.video_url ? (
+                      <video
+                        src={item.video_url}
+                        loop
+                        autoPlay
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                    ) : item.preview_image_url ? (
+                      <img
+                        src={item.preview_image_url}
+                        alt="GIF"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : null}
+                    <div className="absolute bottom-2 left-2 bg-gray-900/80 text-white text-xs font-semibold px-2 py-1 rounded">
+                      GIF
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Engagement metrics */}
         {metrics && (

@@ -67,9 +67,12 @@ class XClient:
         self, 
         tweet_data: dict, 
         users_map: dict[str, dict],
-        tweets_map: dict[str, dict]
+        tweets_map: dict[str, dict],
+        media_map: dict[str, dict] = None
     ) -> Post:
         """Parse X API tweet data into Post model"""
+        from .models import PostMedia
+        
         author_id = tweet_data["author_id"]
         author_data = users_map.get(author_id, {})
         
@@ -87,9 +90,29 @@ class XClient:
         entities = tweet_data.get("entities", {})
         media_urls = []
         urls = []
+        media = []
         
         if "urls" in entities:
             urls = [url["expanded_url"] for url in entities["urls"] if url.get("expanded_url")]
+        
+        # Parse media attachments
+        if media_map and "attachments" in tweet_data and "media_keys" in tweet_data["attachments"]:
+            for media_key in tweet_data["attachments"]["media_keys"]:
+                media_data = media_map.get(media_key)
+                if media_data:
+                    media_item = PostMedia(
+                        type=media_data.get("type", "photo"),
+                        url=media_data.get("url"),
+                        preview_image_url=media_data.get("preview_image_url"),
+                        alt_text=media_data.get("alt_text"),
+                        variants=media_data.get("variants", []),
+                    )
+                    media.append(media_item)
+                    # Keep media_urls for backward compatibility
+                    if media_data.get("url"):
+                        media_urls.append(media_data["url"])
+                    elif media_data.get("preview_image_url"):
+                        media_urls.append(media_data["preview_image_url"])
         
         # Check if repost or quote
         referenced_tweets = tweet_data.get("referenced_tweets", [])
@@ -111,6 +134,7 @@ class XClient:
             author_name=author_data.get("name", "Unknown"),
             created_at=datetime.fromisoformat(tweet_data["created_at"].replace("Z", "+00:00")),
             metrics=metrics,
+            media=media,
             media_urls=media_urls,
             urls=urls,
             is_repost=is_repost,
@@ -191,9 +215,10 @@ class XClient:
         
         params = {
             "max_results": min(max_results, 100),  # API max is 100
-            "tweet.fields": "id,text,created_at,public_metrics,entities,referenced_tweets,author_id,conversation_id,lang",
+            "tweet.fields": "id,text,created_at,public_metrics,entities,referenced_tweets,author_id,conversation_id,lang,attachments",
             "user.fields": "id,username,name,description,public_metrics,verified,profile_image_url,verified_type",
-            "expansions": "author_id,referenced_tweets.id",
+            "expansions": "author_id,referenced_tweets.id,attachments.media_keys",
+            "media.fields": "url,preview_image_url,type,variants,alt_text",
         }
         
         if start_time:
@@ -214,9 +239,10 @@ class XClient:
                 if "data" not in data or not data["data"]:
                     break
                 
-                # Build users map from includes
+                # Build users map, tweets map, and media map from includes
                 users_map = {}
                 tweets_map = {}
+                media_map = {}
                 
                 if "includes" in data:
                     if "users" in data["includes"]:
@@ -225,10 +251,13 @@ class XClient:
                     if "tweets" in data["includes"]:
                         for tweet in data["includes"]["tweets"]:
                             tweets_map[tweet["id"]] = tweet
+                    if "media" in data["includes"]:
+                        for media_item in data["includes"]["media"]:
+                            media_map[media_item["media_key"]] = media_item
                 
                 # Parse tweets
                 for tweet_data in data["data"]:
-                    post = self._parse_post(tweet_data, users_map, tweets_map)
+                    post = self._parse_post(tweet_data, users_map, tweets_map, media_map)
                     all_posts.append(post)
                 
                 # Check for pagination
@@ -259,9 +288,10 @@ class XClient:
         params = {
             "query": query,
             "max_results": min(max_results, 100),
-            "tweet.fields": "id,text,created_at,public_metrics,entities,referenced_tweets,author_id,conversation_id,lang",
+            "tweet.fields": "id,text,created_at,public_metrics,entities,referenced_tweets,author_id,conversation_id,lang,attachments",
             "user.fields": "id,username,name,description,public_metrics,verified,profile_image_url,verified_type",
-            "expansions": "author_id,referenced_tweets.id",
+            "expansions": "author_id,referenced_tweets.id,attachments.media_keys",
+            "media.fields": "url,preview_image_url,type,variants,alt_text",
         }
         
         if start_time:
@@ -282,9 +312,10 @@ class XClient:
                 if "data" not in data or not data["data"]:
                     break
                 
-                # Build users map from includes
+                # Build users map, tweets map, and media map from includes
                 users_map = {}
                 tweets_map = {}
+                media_map = {}
                 
                 if "includes" in data:
                     if "users" in data["includes"]:
@@ -293,10 +324,13 @@ class XClient:
                     if "tweets" in data["includes"]:
                         for tweet in data["includes"]["tweets"]:
                             tweets_map[tweet["id"]] = tweet
+                    if "media" in data["includes"]:
+                        for media_item in data["includes"]["media"]:
+                            media_map[media_item["media_key"]] = media_item
                 
                 # Parse tweets
                 for tweet_data in data["data"]:
-                    post = self._parse_post(tweet_data, users_map, tweets_map)
+                    post = self._parse_post(tweet_data, users_map, tweets_map, media_map)
                     all_posts.append(post)
                 
                 # Check for pagination

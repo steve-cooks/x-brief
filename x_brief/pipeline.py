@@ -134,12 +134,35 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
             
             verified_type = user.verified_type if user else None
             
+            # Format media for frontend
+            media_items = []
+            for media in post.media:
+                media_item = {
+                    "type": media.type,
+                    "url": media.url,
+                    "preview_image_url": media.preview_image_url,
+                    "alt_text": media.alt_text,
+                }
+                # For videos and animated_gifs, find best quality variant
+                if media.variants and len(media.variants) > 0:
+                    # Sort by bitrate (highest first) for video/gif
+                    sorted_variants = sorted(
+                        [v for v in media.variants if v.get("content_type") in ("video/mp4", "video/webm")],
+                        key=lambda v: v.get("bit_rate", 0),
+                        reverse=True
+                    )
+                    if sorted_variants:
+                        media_item["video_url"] = sorted_variants[0].get("url")
+                        media_item["variants"] = sorted_variants
+                media_items.append(media_item)
+            
             posts.append({
                 "authorName": post.author_name or (user.name if user else post.author_username),
                 "authorUsername": post.author_username or (user.username if user else "unknown"),
                 "authorAvatarUrl": avatar_url,
                 "verified": verified_type,
                 "text": post.text,
+                "media": media_items,
                 "metrics": {
                     "likes": post.metrics.likes,
                     "reposts": post.metrics.reposts,

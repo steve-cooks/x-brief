@@ -16,6 +16,15 @@ class PostMetrics(BaseModel):
     quotes: int = 0
 
 
+class PostMedia(BaseModel):
+    """Media attachment in a post"""
+    type: str  # "photo", "video", "animated_gif"
+    url: Optional[str] = None
+    preview_image_url: Optional[str] = None
+    alt_text: Optional[str] = None
+    variants: list[dict] = Field(default_factory=list)  # For videos/gifs
+
+
 class Post(BaseModel):
     """Represents a post/tweet from X"""
     id: str
@@ -25,7 +34,8 @@ class Post(BaseModel):
     author_name: str
     created_at: datetime
     metrics: PostMetrics
-    media_urls: list[str] = Field(default_factory=list)
+    media: list[PostMedia] = Field(default_factory=list)
+    media_urls: list[str] = Field(default_factory=list)  # Deprecated, kept for compatibility
     urls: list[str] = Field(default_factory=list)
     is_repost: bool = False
     is_quote: bool = False

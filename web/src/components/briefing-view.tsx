@@ -49,16 +49,57 @@ function LoadingSkeleton() {
 export function BriefingView() {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [minutesAgo, setMinutesAgo] = useState<number>(0)
 
-  useEffect(() => {
-    fetch("/api/briefing")
-      .then((r) => r.json())
-      .then((data) => {
+  // Fetch briefing data
+  const fetchBriefing = async () => {
+    try {
+      const response = await fetch("/api/briefing")
+      const data = await response.json()
+      
+      // Only update if data changed (compare generated_at timestamp)
+      if (!briefing || data.generated_at !== briefing.generated_at) {
         setBriefing(data)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+        setLastUpdated(new Date())
+      }
+      
+      setLoading(false)
+    } catch (error) {
+      console.error("Failed to fetch briefing:", error)
+      setLoading(false)
+    }
+  }
+
+  // Initial fetch
+  useEffect(() => {
+    fetchBriefing()
   }, [])
+
+  // Poll for updates every 5 minutes
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      fetchBriefing()
+    }, 5 * 60 * 1000) // 5 minutes
+
+    return () => clearInterval(pollInterval)
+  }, [briefing])
+
+  // Update "X minutes ago" every minute
+  useEffect(() => {
+    if (!lastUpdated) return
+
+    const updateMinutes = () => {
+      const now = new Date()
+      const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 60000)
+      setMinutesAgo(diff)
+    }
+
+    updateMinutes()
+    const minuteInterval = setInterval(updateMinutes, 60000) // Update every minute
+
+    return () => clearInterval(minuteInterval)
+  }, [lastUpdated])
 
   const generatedDate = briefing
     ? new Date(briefing.generated_at).toLocaleDateString("en-US", {
@@ -86,14 +127,26 @@ export function BriefingView() {
               )}
             </div>
             {briefing && (
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                <span className="text-sm font-medium text-green-600 dark:text-green-500">
-                  Live
-                </span>
+              <div className="flex items-center gap-3">
+                {/* Last updated indicator */}
+                {lastUpdated && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
+                    {minutesAgo === 0
+                      ? "Just now"
+                      : minutesAgo === 1
+                      ? "1 min ago"
+                      : `${minutesAgo} mins ago`}
+                  </span>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  <span className="text-sm font-medium text-green-600 dark:text-green-500">
+                    Live
+                  </span>
+                </div>
               </div>
             )}
           </div>
