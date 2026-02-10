@@ -1,0 +1,27 @@
+{
+  "x_handle": "yourusername",
+  "tracked_accounts": [
+    "elonmusk",
+    "openai",
+    "AnthropicAI",
+    "steipete",
+    "naval",
+    "balajis",
+    "pmarca",
+    "sama"
+  ],
+  "interests": [
+    "AI",
+    "technology",
+    "startups",
+    "crypto",
+    "web3",
+    "programming"
+  ],
+  "delivery": {
+    "type": "telegram",
+    "enabled": true,
+    "telegram_chat_id": "YOUR_CHAT_ID"
+  },
+  "briefing_schedule": "daily"
+}
