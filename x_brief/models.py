@@ -21,6 +21,7 @@ class PostMedia(BaseModel):
     type: str  # "photo", "video", "animated_gif"
     url: Optional[str] = None
     preview_image_url: Optional[str] = None
+    video_url: Optional[str] = None  # Best quality mp4 for videos/gifs
     alt_text: Optional[str] = None
     variants: list[dict] = Field(default_factory=list)  # For videos/gifs
 

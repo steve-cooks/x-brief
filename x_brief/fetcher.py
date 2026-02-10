@@ -100,10 +100,27 @@ class XClient:
             for media_key in tweet_data["attachments"]["media_keys"]:
                 media_data = media_map.get(media_key)
                 if media_data:
+                    media_type = media_data.get("type", "photo")
+                    video_url = None
+                    
+                    # For videos and animated_gifs, extract best quality mp4 variant
+                    if media_type in ("video", "animated_gif") and "variants" in media_data:
+                        variants = media_data["variants"]
+                        # Filter for mp4 and sort by bitrate (highest first)
+                        mp4_variants = [
+                            v for v in variants 
+                            if v.get("content_type") == "video/mp4" and v.get("url")
+                        ]
+                        if mp4_variants:
+                            # Sort by bitrate, pick highest
+                            best_variant = max(mp4_variants, key=lambda v: v.get("bit_rate", 0))
+                            video_url = best_variant["url"]
+                    
                     media_item = PostMedia(
-                        type=media_data.get("type", "photo"),
+                        type=media_type,
                         url=media_data.get("url"),
                         preview_image_url=media_data.get("preview_image_url"),
+                        video_url=video_url,
                         alt_text=media_data.get("alt_text"),
                         variants=media_data.get("variants", []),
                     )

@@ -141,19 +141,9 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
                     "type": media.type,
                     "url": media.url,
                     "preview_image_url": media.preview_image_url,
+                    "video_url": media.video_url,
                     "alt_text": media.alt_text,
                 }
-                # For videos and animated_gifs, find best quality variant
-                if media.variants and len(media.variants) > 0:
-                    # Sort by bitrate (highest first) for video/gif
-                    sorted_variants = sorted(
-                        [v for v in media.variants if v.get("content_type") in ("video/mp4", "video/webm")],
-                        key=lambda v: v.get("bit_rate", 0),
-                        reverse=True
-                    )
-                    if sorted_variants:
-                        media_item["video_url"] = sorted_variants[0].get("url")
-                        media_item["variants"] = sorted_variants
                 media_items.append(media_item)
             
             posts.append({
