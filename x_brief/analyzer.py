@@ -85,6 +85,14 @@ def build_search_queries(interests: list[str]) -> list[str]:
     # Note: min_followers not widely supported in X API basic search, so we filter in curator
     
     base_filters = "lang:en -is:retweet -is:reply min_faves:10"
+    viral_filters = "lang:en -is:retweet -is:reply min_faves:1000"
+    
+    # VIRAL QUERIES - Always run these to catch mega-viral posts in AI/tech space
+    # These have high engagement thresholds (min_faves:1000)
+    viral_queries = [
+        f"(AI OR LLM OR GPT OR Claude OR OpenAI OR Anthropic) {viral_filters}",
+        f"(startup OR founder OR building OR shipped) {viral_filters}",
+    ]
     
     query_templates = {
         "AI & Tech": f"(AI OR LLM OR GPT OR Claude OR \"machine learning\" OR \"artificial intelligence\") {base_filters}",
@@ -95,8 +103,13 @@ def build_search_queries(interests: list[str]) -> list[str]:
         "Self-Improvement": f"(mindset OR discipline OR productivity OR habits) {base_filters}",
         "Creator Economy": f"(creator OR community OR newsletter OR audience) {base_filters}",
     }
-    queries = []
+    
+    # Start with viral queries (always run first)
+    queries = list(viral_queries)
+    
+    # Add interest-based queries
     for interest in interests:
         if interest in query_templates:
             queries.append(query_templates[interest])
+    
     return queries
