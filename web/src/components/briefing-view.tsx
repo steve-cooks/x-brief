@@ -216,14 +216,29 @@ export function BriefingView() {
 
                 {/* Posts feed */}
                 <div className="divide-y divide-gray-100 dark:divide-gray-900">
-                  {section.posts.map((post, index) => (
-                    <div
-                      key={`${post.authorUsername}-${index}`}
-                      className="px-4 py-3 hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors cursor-pointer"
-                    >
-                      <PostCard {...post} />
-                    </div>
-                  ))}
+                  {section.posts.map((post, index) => {
+                    const isViralSection = section.title === "VIRAL 🔥"
+                    return (
+                      <div
+                        key={`${post.authorUsername}-${index}`}
+                        className={`px-4 py-3 transition-colors cursor-pointer ${
+                          isViralSection
+                            ? "bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-950/20 dark:to-red-950/20 border-l-4 border-orange-500 hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-950/30 dark:hover:to-red-950/30"
+                            : "hover:bg-gray-50/50 dark:hover:bg-gray-900/30"
+                        }`}
+                      >
+                        {isViralSection && (
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span>🔥</span>
+                              <span>VIRAL</span>
+                            </span>
+                          </div>
+                        )}
+                        <PostCard {...post} />
+                      </div>
+                    )
+                  })}
                 </div>
 
                 {/* Empty state */}
