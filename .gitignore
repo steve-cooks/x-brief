@@ -1,4 +1,5 @@
 .env
+.env.local
 __pycache__/
 *.pyc
 *.pyo
@@ -12,3 +13,4 @@ node_modules/
 storybook-static/
 web/node_modules/
 web/.next/
+web/convex/_generated/
