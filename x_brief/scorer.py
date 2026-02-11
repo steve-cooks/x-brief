@@ -9,6 +9,39 @@ from typing import Optional
 from .models import Post, User
 
 
+# Mega-viral thresholds - posts meeting ANY of these are considered mega-viral
+MEGA_VIRAL_VIEWS = 1_000_000
+MEGA_VIRAL_LIKES = 10_000
+MEGA_VIRAL_REPOSTS = 5_000
+
+# Graduated viral thresholds for scoring boosts
+VIRAL_VIEWS_100K = 100_000
+VIRAL_VIEWS_1M = 1_000_000
+VIRAL_VIEWS_10M = 10_000_000
+
+
+def is_mega_viral(post: Post) -> bool:
+    """Check if a post meets mega-viral thresholds."""
+    m = post.metrics
+    return (
+        m.views >= MEGA_VIRAL_VIEWS or
+        m.likes >= MEGA_VIRAL_LIKES or
+        m.reposts >= MEGA_VIRAL_REPOSTS
+    )
+
+
+def get_viral_multiplier(post: Post) -> float:
+    """Get the viral multiplier based on views (graduated scale)."""
+    views = post.metrics.views
+    if views >= VIRAL_VIEWS_10M:
+        return 10.0
+    elif views >= VIRAL_VIEWS_1M:
+        return 5.0
+    elif views >= VIRAL_VIEWS_100K:
+        return 2.0
+    return 1.0
+
+
 def deduplicate(posts: list[Post], section: str = "general") -> list[Post]:
     """
     Remove exact duplicates and group reposts/quotes
@@ -138,6 +171,14 @@ def score_post(post: Post, followers_count: int) -> float:
         normalized_score *= 1.5
     if metrics.reposts > 500:
         normalized_score *= 1.3
+    
+    # Apply graduated viral multiplier based on views
+    viral_mult = get_viral_multiplier(post)
+    normalized_score *= viral_mult
+    
+    # Additional 5x boost for mega-viral posts (on top of viral multiplier)
+    if is_mega_viral(post):
+        normalized_score *= 5.0
     
     return normalized_score
 
