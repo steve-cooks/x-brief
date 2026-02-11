@@ -177,6 +177,54 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
     }
 
 
+def enrich_briefing_json(json_path: str) -> None:
+    """
+    Enrich an existing briefing JSON with missing avatar URLs.
+    
+    Uses unavatar.io to fetch real Twitter avatars without API access.
+    Can be called after either the API pipeline or browser scraper generates the JSON.
+    
+    Args:
+        json_path: Path to the latest-briefing.json file
+    """
+    import json as json_mod
+    
+    # Read existing JSON
+    try:
+        with open(json_path, "r") as f:
+            data = json_mod.load(f)
+    except FileNotFoundError:
+        print(f"⚠️ File not found: {json_path}")
+        return
+    except json.JSONDecodeError:
+        print(f"⚠️ Invalid JSON in: {json_path}")
+        return
+    
+    enriched_count = 0
+    
+    # Process each section
+    for section in data.get("sections", []):
+        for post in section.get("posts", []):
+            # Skip if avatar already present and valid
+            current_avatar = post.get("authorAvatarUrl")
+            if current_avatar and "pbs.twimg.com" in current_avatar:
+                continue
+            
+            # Get username and construct unavatar URL
+            username = post.get("authorUsername")
+            if username:
+                # unavatar.io provides real Twitter avatars without API
+                avatar_url = f"https://unavatar.io/twitter/{username}"
+                post["authorAvatarUrl"] = avatar_url
+                enriched_count += 1
+    
+    # Write back enriched JSON
+    with open(json_path, "w") as f:
+        json_mod.dump(data, f, indent=2, default=str)
+    
+    print(f"✅ Enriched {enriched_count} posts with avatar URLs in {json_path}")
+
+
 def _relative_time(dt) -> str:
     """Convert datetime to relative time string."""
     from datetime import datetime, timezone
