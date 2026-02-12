@@ -29,6 +29,26 @@ def extract_username(handle_or_url: str) -> str:
     return handle_or_url.strip('@')
 
 
+def parse_human_number(value) -> int:
+    """Parse human-readable numbers like '129K', '1.2M', '61K' into integers."""
+    if isinstance(value, (int, float)):
+        return int(value)
+    if not isinstance(value, str):
+        return 0
+    value = value.strip().replace(',', '')
+    multipliers = {'K': 1_000, 'M': 1_000_000, 'B': 1_000_000_000}
+    for suffix, mult in multipliers.items():
+        if value.upper().endswith(suffix):
+            try:
+                return int(float(value[:-1]) * mult)
+            except ValueError:
+                return 0
+    try:
+        return int(float(value))
+    except ValueError:
+        return 0
+
+
 def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
     """Convert a scan post dict to a Post object."""
     try:
@@ -43,13 +63,13 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         author_username = extract_username(author)
         author_name = post_data.get('author_name', author_username)
         
-        # Parse metrics
+        # Parse metrics (handles human-readable strings like "129K", "1.2M")
         metrics_data = post_data.get('metrics', {})
         metrics = PostMetrics(
-            likes=metrics_data.get('likes', 0),
-            reposts=metrics_data.get('reposts', 0),
-            replies=metrics_data.get('replies', 0),
-            views=metrics_data.get('views', 0),
+            likes=parse_human_number(metrics_data.get('likes', 0)),
+            reposts=parse_human_number(metrics_data.get('reposts', 0)),
+            replies=parse_human_number(metrics_data.get('replies', 0)),
+            views=parse_human_number(metrics_data.get('views', 0)),
             quotes=0  # Not in scan data
         )
         
