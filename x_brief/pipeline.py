@@ -125,6 +125,7 @@ async def run_briefing_from_scans(
     config_path: str,
     scan_dir: str = None,
     hours: int = 48,
+    skip_dedup: bool = False,
 ) -> str:
     """
     Pipeline that reads from Rabbit's timeline scan data instead of the X API.
@@ -159,14 +160,19 @@ async def run_briefing_from_scans(
         print("⚠️ No posts found in scan data. Nothing to brief on.")
         return "No posts found in scan data."
     
-    # 3. Deduplicate against brief history
-    print("🔄 Checking brief history for duplicates...")
-    history = load_brief_history(history_path)
-    fresh_posts = filter_already_briefed(all_posts, history)
-    
-    if not fresh_posts:
-        print("⚠️ All scanned posts have already been briefed. Nothing new.")
-        return "All posts already briefed."
+    # 3. Deduplicate against brief history (unless skipped for web app)
+    if skip_dedup:
+        print("⏭️  Skipping dedup (web app mode)")
+        fresh_posts = all_posts
+        history = None
+    else:
+        print("🔄 Checking brief history for duplicates...")
+        history = load_brief_history(history_path)
+        fresh_posts = filter_already_briefed(all_posts, history)
+        
+        if not fresh_posts:
+            print("⚠️ All scanned posts have already been briefed. Nothing new.")
+            return "All posts already briefed."
     
     # 4. Build users map from posts
     users_map = build_users_from_posts(fresh_posts)
@@ -195,12 +201,13 @@ async def run_briefing_from_scans(
         json.dump(json_data, f, indent=2, default=str)
     print(f"📄 JSON exported to {json_path}")
     
-    # 8. Save posts to brief history (so they won't appear next time)
-    briefed_posts = []
-    for section in briefing.sections:
-        for item in section.items:
-            briefed_posts.append(item.post)
-    save_brief_history(history_path, history, briefed_posts)
+    # 8. Save posts to brief history (only when dedup is active — i.e., morning brief)
+    if not skip_dedup and history is not None:
+        briefed_posts = []
+        for section in briefing.sections:
+            for item in section.items:
+                briefed_posts.append(item.post)
+        save_brief_history(history_path, history, briefed_posts)
     
     return output
 
@@ -341,8 +348,10 @@ def main():
         idx = sys.argv.index("--scan-dir")
         scan_dir = sys.argv[idx + 1]
     
+    skip_dedup = "--skip-dedup" in sys.argv
+    
     if "--from-scans" in sys.argv:
-        asyncio.run(run_briefing_from_scans(config_path, scan_dir=scan_dir, hours=hours))
+        asyncio.run(run_briefing_from_scans(config_path, scan_dir=scan_dir, hours=hours, skip_dedup=skip_dedup))
     else:
         asyncio.run(run_briefing(config_path, hours))
 
