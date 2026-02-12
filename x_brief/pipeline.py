@@ -10,6 +10,8 @@ from x_brief.analyzer import infer_interests, build_search_queries
 from x_brief.curator import curate_briefing
 from x_brief.formatter import format_markdown
 from x_brief.models import User
+from x_brief.scan_reader import load_scan_posts, build_users_from_posts
+from x_brief.dedup import load_brief_history, filter_already_briefed, save_brief_history
 
 async def run_briefing(config_path: str, hours: int = 24) -> str:
     """Full pipeline: load config -> fetch -> analyze -> curate -> format."""
@@ -117,6 +119,90 @@ async def run_briefing(config_path: str, hours: int = 24) -> str:
         print(f"📄 JSON exported to {json_path}")
         
         return output
+
+
+async def run_briefing_from_scans(
+    config_path: str,
+    scan_dir: str = None,
+    hours: int = 48,
+) -> str:
+    """
+    Pipeline that reads from Rabbit's timeline scan data instead of the X API.
+    
+    Args:
+        config_path: Path to user config (for interests, tracked accounts)
+        scan_dir: Directory with scan JSONs (default: ~/projects/second-brain/timeline_scans/)
+        hours: Only include posts from scans within the last N hours (default 48)
+    """
+    # Default scan directory
+    if scan_dir is None:
+        scan_dir = os.path.expanduser("~/projects/second-brain/timeline_scans/")
+    
+    # History file for deduplication
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    os.makedirs(data_dir, exist_ok=True)
+    history_path = os.path.join(data_dir, "brief_history.json")
+    
+    # 1. Load config for interests
+    user_config = load_user_config(config_path)
+    interests = user_config.recent_interests or [
+        "AI", "Machine Learning", "LLMs", "Claude", "OpenAI", "Cursor",
+        "OpenClaw", "Startups", "Building", "SaaS", "Design", "Trading bots",
+    ]
+    print(f"📋 Config loaded. Interests: {', '.join(interests)}")
+    
+    # 2. Load posts from scan data
+    print(f"📂 Reading scans from {scan_dir} (last {hours}h)...")
+    all_posts = load_scan_posts(scan_dir, hours=hours)
+    
+    if not all_posts:
+        print("⚠️ No posts found in scan data. Nothing to brief on.")
+        return "No posts found in scan data."
+    
+    # 3. Deduplicate against brief history
+    print("🔄 Checking brief history for duplicates...")
+    history = load_brief_history(history_path)
+    fresh_posts = filter_already_briefed(all_posts, history)
+    
+    if not fresh_posts:
+        print("⚠️ All scanned posts have already been briefed. Nothing new.")
+        return "All posts already briefed."
+    
+    # 4. Build users map from posts
+    users_map = build_users_from_posts(fresh_posts)
+    print(f"👥 Built {len(users_map)} user profiles from scan data")
+    
+    # 5. Curate briefing using existing scoring/curation logic
+    print("🎯 Curating briefing...")
+    briefing = curate_briefing(
+        posts=fresh_posts,
+        users=users_map,
+        interests=interests,
+        hours=hours,
+        search_posts=fresh_posts,  # Treat all scan posts as potential search results too
+    )
+    
+    # 6. Format
+    output = format_markdown(briefing)
+    print(f"\n{'='*60}")
+    print(output)
+    print(f"{'='*60}")
+    
+    # 7. Export JSON for web frontend
+    json_data = export_briefing_json(briefing, users_map, hours)
+    json_path = os.path.join(data_dir, "latest-briefing.json")
+    with open(json_path, "w") as f:
+        json.dump(json_data, f, indent=2, default=str)
+    print(f"📄 JSON exported to {json_path}")
+    
+    # 8. Save posts to brief history (so they won't appear next time)
+    briefed_posts = []
+    for section in briefing.sections:
+        for item in section.items:
+            briefed_posts.append(item.post)
+    save_brief_history(history_path, history, briefed_posts)
+    
+    return output
 
 
 def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
@@ -241,16 +327,24 @@ def _relative_time(dt) -> str:
 def main():
     """CLI entry point."""
     if len(sys.argv) < 2:
-        print("Usage: python -m x_brief.pipeline <config_path> [--hours N]")
+        print("Usage: python -m x_brief.pipeline <config_path> [--hours N] [--from-scans] [--scan-dir PATH]")
         sys.exit(1)
     
     config_path = sys.argv[1]
-    hours = 24
+    hours = 48 if "--from-scans" in sys.argv else 24
     if "--hours" in sys.argv:
         idx = sys.argv.index("--hours")
         hours = int(sys.argv[idx + 1])
     
-    asyncio.run(run_briefing(config_path, hours))
+    scan_dir = None
+    if "--scan-dir" in sys.argv:
+        idx = sys.argv.index("--scan-dir")
+        scan_dir = sys.argv[idx + 1]
+    
+    if "--from-scans" in sys.argv:
+        asyncio.run(run_briefing_from_scans(config_path, scan_dir=scan_dir, hours=hours))
+    else:
+        asyncio.run(run_briefing(config_path, hours))
 
 if __name__ == "__main__":
     main()
