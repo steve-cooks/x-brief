@@ -192,7 +192,7 @@ export function BriefingView() {
 
       {/* Main content with tabs */}
       {!loading && briefing && (
-        <Tabs defaultValue="viral" className="w-full">
+        <Tabs key={briefing.generated_at} defaultValue="viral" className="w-full">
           {/* Tab navigation - X style */}
           <div className="sticky top-[57px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
             <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
