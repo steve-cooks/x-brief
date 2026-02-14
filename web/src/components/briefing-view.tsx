@@ -58,7 +58,7 @@ const TABS = [
   { id: "viral", label: "VIRAL", mobileLabel: "VIRAL", emoji: "\uD83D\uDD25", sectionTitle: "VIRAL \uD83D\uDD25" },
   { id: "top_stories", label: "TOP STORIES", mobileLabel: "TOP", emoji: "\uD83D\uDCCC", sectionTitle: "TOP STORIES" },
   { id: "trending", label: "TRENDING", mobileLabel: "TRENDING", emoji: "\uD83D\uDD25", sectionTitle: "TRENDING IN YOUR NICHES" },
-  { id: "worth_a_look", label: "WORTH A LOOK", mobileLabel: "WORTH A LOOK", emoji: "\uD83D\uDCA1", sectionTitle: "WORTH A LOOK" },
+  { id: "worth_a_look", label: "WORTH A LOOK", mobileLabel: "PICKS", emoji: "\uD83D\uDCA1", sectionTitle: "WORTH A LOOK" },
 ] as const
 
 type Post = BriefingData["sections"][number]["posts"][number]

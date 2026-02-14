@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 @theme inline {
   --color-background: var(--background);
@@ -106,7 +106,8 @@
 }
 
 /* Dark Mode - Deep & Premium (Apple.com dark mode inspired) */
-.dark {
+@media (prefers-color-scheme: dark) {
+  :root {
   --background: 0 0 0;                 /* True black */
   --foreground: 255 255 255;           /* Pure white text */
   
@@ -152,6 +153,7 @@
   --sidebar-accent-foreground: 255 255 255;
   --sidebar-border: 58 58 60;
   --sidebar-ring: 10 132 255;
+  }
 }
 
 @layer base {
