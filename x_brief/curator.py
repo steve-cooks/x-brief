@@ -164,7 +164,7 @@ def curate_briefing(
             top_items.append(BriefingItem(
                 post=p,
                 summary=clean_summary(p.text),
-                category="Top",
+                category="Top Stories",
                 score=s,
             ))
             used_ids.add(p.id)

@@ -254,7 +254,7 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
                 },
                 "postUrl": f"https://x.com/{post.author_username or 'x'}/status/{post.id}",
                 "timestamp": _relative_time(post.created_at),
-                "category": item.category if item.category not in ("Top", "Worth a Look") else None,
+                "category": item.category,
             })
         sections.append({
             "title": section.title,

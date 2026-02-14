@@ -53,6 +53,33 @@ function LoadingSkeleton() {
   )
 }
 
+// Fixed tab definitions — always show all 4 tabs
+const TABS = [
+  { id: "viral", label: "VIRAL", mobileLabel: "VIRAL", emoji: "\uD83D\uDD25", sectionTitle: "VIRAL \uD83D\uDD25" },
+  { id: "top_stories", label: "TOP STORIES", mobileLabel: "TOP", emoji: "\uD83D\uDCCC", sectionTitle: "TOP STORIES" },
+  { id: "trending", label: "TRENDING", mobileLabel: "TRENDING", emoji: "\uD83D\uDD25", sectionTitle: "TRENDING IN YOUR NICHES" },
+  { id: "worth_a_look", label: "WORTH A LOOK", mobileLabel: "WORTH A LOOK", emoji: "\uD83D\uDCA1", sectionTitle: "WORTH A LOOK" },
+] as const
+
+type Post = BriefingData["sections"][number]["posts"][number]
+
+function getPostsForTab(briefing: BriefingData, tabId: string): Post[] {
+  const tab = TABS.find((t) => t.id === tabId)
+  if (!tab) return []
+
+  // Find the matching section by title
+  const section = briefing.sections.find((s) => s.title === tab.sectionTitle)
+  if (section) return section.posts
+
+  // Fallback: also check for YOUR CIRCLE section posts in top_stories tab
+  if (tabId === "top_stories") {
+    const circle = briefing.sections.find((s) => s.title === "YOUR CIRCLE")
+    if (circle) return circle.posts
+  }
+
+  return []
+}
+
 export function BriefingView() {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -64,13 +91,13 @@ export function BriefingView() {
     try {
       const response = await fetch("/api/briefing")
       const data = await response.json()
-      
+
       // Only update if data changed (compare generated_at timestamp)
       if (!briefing || data.generated_at !== briefing.generated_at) {
         setBriefing(data)
         setLastUpdated(new Date())
       }
-      
+
       setLoading(false)
     } catch (error) {
       console.error("Failed to fetch briefing:", error)
@@ -164,22 +191,22 @@ export function BriefingView() {
       {loading && <LoadingSkeleton />}
 
       {/* Main content with tabs */}
-      {!loading && briefing && briefing.sections.length > 0 && (
-        <Tabs defaultValue={briefing.sections[0].title} className="w-full">
+      {!loading && briefing && (
+        <Tabs defaultValue="viral" className="w-full">
           {/* Tab navigation - X style */}
           <div className="sticky top-[57px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
             <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
               <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 inline-flex justify-start min-w-full">
-                {briefing.sections.map((section) => (
+                {TABS.map((tab) => (
                   <TabsTrigger
-                    key={section.title}
-                    value={section.title}
+                    key={tab.id}
+                    value={tab.id}
                     className="relative flex-shrink-0 px-4 py-4 rounded-none border-0 bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 data-[state=active]:text-gray-900 data-[state=active]:bg-transparent dark:data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:font-semibold transition-colors after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[3px] after:bg-blue-500 after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                   >
                     <span className="flex items-center gap-2 text-[15px] whitespace-nowrap">
-                      <span>{section.emoji}</span>
-                      <span className="hidden sm:inline">{section.title}</span>
-                      <span className="sm:hidden">{section.title.split(' ')[0]}</span>
+                      <span>{tab.emoji}</span>
+                      <span className="hidden sm:inline">{tab.label}</span>
+                      <span className="sm:hidden text-[13px]">{tab.mobileLabel}</span>
                     </span>
                   </TabsTrigger>
                 ))}
@@ -189,68 +216,71 @@ export function BriefingView() {
 
           {/* Tab content */}
           <div className="max-w-2xl mx-auto">
-            {briefing.sections.map((section) => (
-              <TabsContent
-                key={section.title}
-                value={section.title}
-                className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
-              >
-                {/* Section stats */}
-                <div className="px-4 py-3 bg-white dark:bg-black border-b border-gray-100 dark:border-gray-900">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {section.posts.length}
-                    </span>
-                    <span className="text-gray-600 dark:text-gray-400">
-                      {section.posts.length === 1 ? "post" : "posts"}
-                    </span>
-                    <span className="text-gray-400 dark:text-gray-600">·</span>
-                    <span className="text-gray-600 dark:text-gray-400 sm:hidden">
-                      Past {briefing.period_hours}h
-                    </span>
-                    <span className="text-gray-600 dark:text-gray-400 hidden sm:inline">
-                      {generatedDate}
-                    </span>
+            {TABS.map((tab) => {
+              const posts = getPostsForTab(briefing, tab.id)
+              const isViral = tab.id === "viral"
+              return (
+                <TabsContent
+                  key={tab.id}
+                  value={tab.id}
+                  className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
+                >
+                  {/* Section stats */}
+                  <div className="px-4 py-3 bg-white dark:bg-black border-b border-gray-100 dark:border-gray-900">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {posts.length}
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {posts.length === 1 ? "post" : "posts"}
+                      </span>
+                      <span className="text-gray-400 dark:text-gray-600">·</span>
+                      <span className="text-gray-600 dark:text-gray-400 sm:hidden">
+                        Past {briefing.period_hours}h
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-400 hidden sm:inline">
+                        {generatedDate}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Posts feed */}
-                <div className="divide-y divide-gray-100 dark:divide-gray-900">
-                  {section.posts.map((post, index) => {
-                    const isViralSection = section.title === "VIRAL 🔥"
-                    return (
-                      <div
-                        key={`${post.authorUsername}-${index}`}
-                        className={`px-4 py-3 transition-colors cursor-pointer ${
-                          isViralSection
-                            ? "bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-950/20 dark:to-red-950/20 border-l-4 border-orange-500 hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-950/30 dark:hover:to-red-950/30"
-                            : "hover:bg-gray-50/50 dark:hover:bg-gray-900/30"
-                        }`}
-                      >
-                        {isViralSection && (
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <span>🔥</span>
-                              <span>VIRAL</span>
-                            </span>
-                          </div>
-                        )}
-                        <PostCard {...post} />
-                      </div>
-                    )
-                  })}
-                </div>
+                  {/* Posts feed */}
+                  {posts.length > 0 && (
+                    <div className="divide-y divide-gray-100 dark:divide-gray-900">
+                      {posts.map((post, index) => (
+                        <div
+                          key={`${post.authorUsername}-${index}`}
+                          className={`px-4 py-3 transition-colors cursor-pointer ${
+                            isViral
+                              ? "bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-950/20 dark:to-red-950/20 border-l-4 border-orange-500 hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-950/30 dark:hover:to-red-950/30"
+                              : "hover:bg-gray-50/50 dark:hover:bg-gray-900/30"
+                          }`}
+                        >
+                          {isViral && (
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span>{"\uD83D\uDD25"}</span>
+                                <span>VIRAL</span>
+                              </span>
+                            </div>
+                          )}
+                          <PostCard {...post} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                {/* Empty state */}
-                {section.posts.length === 0 && (
-                  <div className="text-center py-20">
-                    <p className="text-base text-gray-600 dark:text-gray-400">
-                      No posts in this section yet.
-                    </p>
-                  </div>
-                )}
-              </TabsContent>
-            ))}
+                  {/* Empty state */}
+                  {posts.length === 0 && (
+                    <div className="text-center py-20">
+                      <p className="text-base text-gray-600 dark:text-gray-400">
+                        No posts in this category
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+              )
+            })}
           </div>
         </Tabs>
       )}
