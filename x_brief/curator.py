@@ -61,6 +61,34 @@ def clean_summary(text: str, max_len: int = 120) -> str:
         text = text[:max_len-3].rsplit(' ', 1)[0] + '...'
     return text or "(media post)"
 
+def cap_posts_per_account(posts_with_scores: list[tuple[Post, float]], max_per_account: int = 2) -> list[tuple[Post, float]]:
+    """
+    Cap posts to max N per author_id, keeping highest scored ones.
+
+    Args:
+        posts_with_scores: List of (post, score) tuples
+        max_per_account: Maximum posts per author (default 2)
+
+    Returns:
+        Filtered list with max N posts per author_id
+    """
+    from collections import defaultdict
+
+    # Group by author_id
+    by_author = defaultdict(list)
+    for post, score in posts_with_scores:
+        by_author[post.author_id].append((post, score))
+
+    # Sort each author's posts by score and keep top N
+    result = []
+    for author_id, author_posts in by_author.items():
+        author_posts.sort(key=lambda x: x[1], reverse=True)
+        result.extend(author_posts[:max_per_account])
+
+    # Re-sort by score
+    result.sort(key=lambda x: x[1], reverse=True)
+    return result
+
 def curate_briefing(
     posts: list[Post],
     users: dict[str, User],
@@ -133,8 +161,9 @@ def curate_briefing(
             s = score_post(p, followers)
             viral_posts.append((p, s))
     
-    # Sort by score and take top 3
+    # Sort by score, cap per account, and take top 3
     viral_posts.sort(key=lambda x: x[1], reverse=True)
+    viral_posts = cap_posts_per_account(viral_posts)
     viral_items = []
     for p, s in viral_posts[:3]:
         viral_items.append(BriefingItem(
@@ -151,7 +180,7 @@ def curate_briefing(
     
     # Section 1: TOP STORIES — highest scored overall (filter short posts)
     top_candidates = deduplicate([p for p, s in scored], section="top_stories")
-    top_items = []
+    top_scored = []
     for p in top_candidates:
         if p.id not in used_ids:
             # TOP STORIES requires meaningful engagement
@@ -161,15 +190,19 @@ def curate_briefing(
             user = users.get(p.author_id)
             followers = user.followers_count if user else 100
             s = score_post(p, followers)
-            top_items.append(BriefingItem(
-                post=p,
-                summary=clean_summary(p.text),
-                category="Top Stories",
-                score=s,
-            ))
-            used_ids.add(p.id)
-            if len(top_items) >= 5:
-                break
+            top_scored.append((p, s))
+    top_scored = cap_posts_per_account(top_scored)
+    top_items = []
+    for p, s in top_scored:
+        top_items.append(BriefingItem(
+            post=p,
+            summary=clean_summary(p.text),
+            category="Top Stories",
+            score=s,
+        ))
+        used_ids.add(p.id)
+        if len(top_items) >= 5:
+            break
     if top_items:
         sections.append(BriefingSection(title="TOP STORIES", emoji="📌", items=top_items))
     
@@ -194,6 +227,7 @@ def curate_briefing(
         sections.append(BriefingSection(title="YOUR CIRCLE", emoji="👥", items=circle_items[:10]))
     
     # Section 3: TRENDING IN YOUR NICHES — from search results (already filtered by engagement & score > 0)
+    search_scored = cap_posts_per_account(search_scored)
     trend_items = []
     for p, s in search_scored[:8]:
         if p.id not in used_ids:
@@ -208,18 +242,19 @@ def curate_briefing(
         sections.append(BriefingSection(title="TRENDING IN YOUR NICHES", emoji="🔥", items=trend_items))
     
     # Section 4: WORTH A LOOK — breakout posts + interesting outliers
+    worth_scored = [(p, s) for p, s in scored if p.id not in used_ids and (p.id in breakouts or s > 0)]
+    worth_scored = cap_posts_per_account(worth_scored)
     worth_items = []
-    for p, s in scored:
-        if p.id not in used_ids and (p.id in breakouts or s > 0):
-            worth_items.append(BriefingItem(
-                post=p,
-                summary=clean_summary(p.text),
-                category="Worth a Look",
-                score=s,
-            ))
-            used_ids.add(p.id)
-            if len(worth_items) >= 5:
-                break
+    for p, s in worth_scored:
+        worth_items.append(BriefingItem(
+            post=p,
+            summary=clean_summary(p.text),
+            category="Worth a Look",
+            score=s,
+        ))
+        used_ids.add(p.id)
+        if len(worth_items) >= 5:
+            break
     if worth_items:
         sections.append(BriefingSection(title="WORTH A LOOK", emoji="💡", items=worth_items))
     
