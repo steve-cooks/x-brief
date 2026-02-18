@@ -118,6 +118,44 @@ function RichText({ text }: { text: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// LinkCard — X-style link preview below post text
+// ---------------------------------------------------------------------------
+
+function extractFirstUrl(segments: TextSegment[]): string | null {
+  for (const seg of segments) {
+    if (seg.type === "url" && seg.href) return seg.href
+  }
+  return null
+}
+
+function getDomain(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.hostname.replace(/^www\./, "")
+  } catch {
+    return url.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]
+  }
+}
+
+function LinkCard({ url }: { url: string }) {
+  const domain = getDomain(url)
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 flex items-center gap-2 border border-[#eff3f4] dark:border-[#2f3336] rounded-2xl px-3 py-2.5 transition-colors hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] bg-white dark:bg-black"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="text-[13px] text-[#536471] dark:text-[#71767b] truncate">
+        {domain}
+      </span>
+      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-[#536471] dark:text-[#71767b]" />
+    </a>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // X-style timestamp formatting
 // ---------------------------------------------------------------------------
 
@@ -187,6 +225,8 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
   const [expanded, setExpanded] = useState(false)
   const isLong = post.text.length > 180
   const displayText = !expanded && isLong ? post.text.slice(0, 180) + "…" : post.text
+  const quotedSegments = useMemo(() => parsePostText(displayText), [displayText])
+  const quotedFirstUrl = useMemo(() => extractFirstUrl(quotedSegments), [quotedSegments])
 
   return (
     <div
@@ -239,6 +279,8 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
             </button>
           )}
         </p>
+        {/* Link card in quoted post */}
+        {quotedFirstUrl && <LinkCard url={quotedFirstUrl} />}
       </div>
 
       {/* Quoted media (single image preview) */}
@@ -329,6 +371,10 @@ export function PostCard({
 
   const displayTime = formatTimestamp(createdAt, timestamp)
 
+  // Extract first URL for link card
+  const textSegments = useMemo(() => parsePostText(displayText), [displayText])
+  const firstUrl = useMemo(() => extractFirstUrl(textSegments), [textSegments])
+
   return (
     <article className="flex gap-3 group min-h-[44px]">
       {/* Avatar */}
@@ -384,6 +430,9 @@ export function PostCard({
             )}
           </p>
         </div>
+
+        {/* Link card */}
+        {firstUrl && <LinkCard url={firstUrl} />}
 
         {/* Quoted post */}
         {quotedPost && <QuotedPost post={quotedPost} />}
