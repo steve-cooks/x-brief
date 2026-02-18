@@ -70,7 +70,7 @@ function parsePostText(raw: string): TextSegment[] {
       const display = url
         .replace(/^https?:\/\//, "")
         .replace(/^www\./, "")
-        .slice(0, 40)
+        .slice(0, 35)
       segments.push({
         type: "url",
         value: display.length < url.replace(/^https?:\/\//, "").length ? display + "…" : display,
