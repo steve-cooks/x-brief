@@ -270,20 +270,15 @@ export function BriefingView() {
                       {posts.map((post, index) => (
                         <div
                           key={`${post.authorUsername}-${index}`}
-                          className={`px-4 py-3 border-b border-[#eff3f4] dark:border-[#2f3336] transition-colors cursor-pointer ${
-                            isViral
-                              ? "bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-950/20 dark:to-red-950/20 border-l-4 border-orange-500 hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-950/30 dark:hover:to-red-950/30"
-                              : "hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)]"
-                          }`}
+                          className="px-4 py-3 border-b border-[#eff3f4] dark:border-[#2f3336] transition-colors cursor-pointer hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)]"
                           onClick={() => {
                             if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
                           }}
                         >
                           {isViral && (
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <span>{"\uD83D\uDD25"}</span>
-                                <span>VIRAL</span>
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-[13px] font-bold text-[#536471] dark:text-[#71767b]">
+                                🔥 Viral
                               </span>
                             </div>
                           )}
