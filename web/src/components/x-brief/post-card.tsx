@@ -106,7 +106,7 @@ function RichText({ text }: { text: string }) {
             href={seg.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-500 hover:underline"
+            className="text-[#1d9bf0] hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
             {seg.value}
@@ -229,7 +229,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
           <RichText text={displayText} />
           {isLong && !expanded && (
             <button
-              className="text-blue-500 hover:underline ml-1 text-[15px]"
+              className="text-[#1d9bf0] hover:underline ml-1 text-[15px]"
               onClick={(e) => {
                 e.stopPropagation()
                 setExpanded(true)
@@ -373,7 +373,7 @@ export function PostCard({
             <RichText text={displayText} />
             {isLongText && !textExpanded && (
               <button
-                className="text-blue-500 hover:underline ml-1 text-[15px]"
+                className="text-[#1d9bf0] hover:underline ml-1 text-[15px]"
                 onClick={(e) => {
                   e.stopPropagation()
                   setTextExpanded(true)
@@ -519,7 +519,7 @@ export function PostCard({
                 href={postUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center text-gray-500 dark:text-gray-500 hover:text-blue-500 transition-colors p-2"
+                className="flex items-center text-gray-500 dark:text-gray-500 hover:text-[#1d9bf0] transition-colors p-2"
                 onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink className="h-[18px] w-[18px]" />
