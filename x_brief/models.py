@@ -26,6 +26,16 @@ class PostMedia(BaseModel):
     variants: list[dict] = Field(default_factory=list)  # For videos/gifs
 
 
+class QuotedPost(BaseModel):
+    """Represents a quoted tweet embedded in a post"""
+    id: Optional[str] = None
+    text: str = ""
+    author_username: str = ""
+    author_name: str = ""
+    metrics: Optional[PostMetrics] = None
+    post_url: Optional[str] = None
+
+
 class Post(BaseModel):
     """Represents a post/tweet from X"""
     id: str
@@ -41,6 +51,7 @@ class Post(BaseModel):
     is_repost: bool = False
     is_quote: bool = False
     quoted_post_id: Optional[str] = None
+    quoted_post: Optional[QuotedPost] = None
     conversation_id: Optional[str] = None
     lang: Optional[str] = None
 

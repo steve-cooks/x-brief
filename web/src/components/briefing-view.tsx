@@ -24,10 +24,29 @@ interface BriefingData {
         video_url?: string
         alt_text?: string
       }>
-      metrics?: { likes?: number; reposts?: number; views?: number }
+      metrics?: { likes?: number; reposts?: number; views?: number; replies?: number }
       postUrl?: string
       timestamp?: string
+      createdAt?: string
       category?: string
+      quotedPost?: {
+        authorName: string
+        authorUsername: string
+        authorAvatarUrl?: string
+        verified?: string | null
+        text: string
+        media?: Array<{
+          type: string
+          url?: string
+          preview_image_url?: string
+          video_url?: string
+          alt_text?: string
+        }>
+        metrics?: { likes?: number; reposts?: number; views?: number; replies?: number }
+        postUrl?: string
+        timestamp?: string
+        createdAt?: string
+      }
     }>
   }>
   stats: {
@@ -83,7 +102,6 @@ function getPostsForTab(briefing: BriefingData, tabId: string): Post[] {
 export function BriefingView() {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [minutesAgo, setMinutesAgo] = useState<number>(0)
 
   // Fetch briefing data
@@ -95,7 +113,6 @@ export function BriefingView() {
       // Only update if data changed (compare generated_at timestamp)
       if (!briefing || data.generated_at !== briefing.generated_at) {
         setBriefing(data)
-        setLastUpdated(new Date())
       }
 
       setLoading(false)
@@ -119,13 +136,14 @@ export function BriefingView() {
     return () => clearInterval(pollInterval)
   }, [briefing])
 
-  // Update "X minutes ago" every minute
+  // Update "X minutes ago" based on generated_at (data freshness, not page load)
   useEffect(() => {
-    if (!lastUpdated) return
+    if (!briefing?.generated_at) return
 
     const updateMinutes = () => {
       const now = new Date()
-      const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 60000)
+      const generatedAt = new Date(briefing.generated_at)
+      const diff = Math.floor((now.getTime() - generatedAt.getTime()) / 60000)
       setMinutesAgo(diff)
     }
 
@@ -133,7 +151,7 @@ export function BriefingView() {
     const minuteInterval = setInterval(updateMinutes, 60000) // Update every minute
 
     return () => clearInterval(minuteInterval)
-  }, [lastUpdated])
+  }, [briefing?.generated_at])
 
   const generatedDate = briefing
     ? new Date(briefing.generated_at).toLocaleDateString("en-US", {
@@ -162,25 +180,27 @@ export function BriefingView() {
             </div>
             {briefing && (
               <div className="flex items-center gap-3">
-                {/* Last updated indicator */}
-                {lastUpdated && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
-                    {minutesAgo === 0
-                      ? "Just now"
-                      : minutesAgo === 1
-                      ? "1 min ago"
-                      : `${minutesAgo} mins ago`}
-                  </span>
+                {/* Freshness indicator based on generated_at */}
+                <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
+                  {minutesAgo < 1
+                    ? "Updated just now"
+                    : minutesAgo < 60
+                    ? `Updated ${minutesAgo}m ago`
+                    : minutesAgo < 1440
+                    ? `Updated ${Math.floor(minutesAgo / 60)}h ago`
+                    : `Updated ${Math.floor(minutesAgo / 1440)}d ago`}
+                </span>
+                {minutesAgo < 30 && (
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-sm font-medium text-green-600 dark:text-green-500">
+                      Live
+                    </span>
+                  </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                  <span className="text-sm font-medium text-green-600 dark:text-green-500">
-                    Live
-                  </span>
-                </div>
               </div>
             )}
           </div>
@@ -255,6 +275,9 @@ export function BriefingView() {
                               ? "bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-950/20 dark:to-red-950/20 border-l-4 border-orange-500 hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-950/30 dark:hover:to-red-950/30"
                               : "hover:bg-gray-50/50 dark:hover:bg-gray-900/30"
                           }`}
+                          onClick={() => {
+                            if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
+                          }}
                         >
                           {isViral && (
                             <div className="flex items-center gap-1.5 mb-2">
@@ -331,7 +354,13 @@ export function BriefingView() {
             </div>
           </div>
           <p className="text-center text-xs text-gray-500 dark:text-gray-500 mt-6">
-            Generated at{" "}
+            Generated{" "}
+            {new Date(briefing.generated_at).toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            at{" "}
             {new Date(briefing.generated_at).toLocaleTimeString("en-US", {
               hour: "numeric",
               minute: "2-digit",

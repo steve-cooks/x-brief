@@ -239,10 +239,15 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
                 }
                 media_items.append(media_item)
             
+            # Strip "(pinned)" artifacts from scraped author data
+            clean_author_name = (post.author_name or (user.name if user else post.author_username) or "").replace(" (pinned)", "")
+            clean_author_username = (post.author_username or (user.username if user else "unknown") or "").replace(" (pinned)", "")
+            clean_avatar_url = avatar_url.replace(" (pinned)", "") if avatar_url else avatar_url
+
             posts.append({
-                "authorName": post.author_name or (user.name if user else post.author_username),
-                "authorUsername": post.author_username or (user.username if user else "unknown"),
-                "authorAvatarUrl": avatar_url,
+                "authorName": clean_author_name,
+                "authorUsername": clean_author_username,
+                "authorAvatarUrl": clean_avatar_url,
                 "verified": verified_type,
                 "text": post.text,
                 "media": media_items,
@@ -252,8 +257,9 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
                     "views": post.metrics.views,
                     "replies": post.metrics.replies,
                 },
-                "postUrl": f"https://x.com/{post.author_username or 'x'}/status/{post.id}",
+                "postUrl": f"https://x.com/{clean_author_username}/status/{post.id}",
                 "timestamp": _relative_time(post.created_at),
+                "createdAt": post.created_at.isoformat() if post.created_at else None,
                 "category": item.category,
             })
         sections.append({

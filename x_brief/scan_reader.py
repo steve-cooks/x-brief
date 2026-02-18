@@ -8,7 +8,75 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
-from x_brief.models import Post, PostMetrics, User
+from x_brief.models import Post, PostMetrics, PostMedia, QuotedPost, User
+
+
+# Known-verified accounts fallback (major accounts that are verified on X)
+# Used when scan data doesn't include verification status
+KNOWN_VERIFIED_ACCOUNTS: dict[str, str] = {
+    # AI companies
+    "anthropic": "business",
+    "anthropicai": "business",
+    "claudeai": "business",
+    "openai": "business",
+    "google": "business",
+    "googleai": "business",
+    "googledeepmind": "business",
+    "deepmind": "business",
+    "microsoft": "business",
+    "xai": "business",
+    "meta": "business",
+    "metaai": "business",
+    "nvidia": "business",
+    "huggingface": "business",
+    "midaborney": "business",
+    "stability_ai": "business",
+    "peraborney_ai": "business",
+    "coaborney": "business",
+    "cursor_ai": "business",
+    "replitai": "business",
+    "replit": "business",
+    "vercel": "business",
+    "github": "business",
+    "amazonsci": "business",
+    "apple": "business",
+    # AI people
+    "elonmusk": "blue",
+    "sama": "blue",
+    "daborney": "blue",
+    "karpaborney": "blue",
+    "ilyasut": "blue",
+    "demaborney": "blue",
+    "ylecun": "blue",
+    "jeffdean": "blue",
+    "drjimfan": "blue",
+    "emollick": "blue",
+    "hardmaru": "blue",
+    # Tech people
+    "steipete": "blue",
+    "alexfinn": "blue",
+    "levelsio": "blue",
+    "marc_louvion": "blue",
+    "dhh": "blue",
+    "natfriedman": "blue",
+    "rauchg": "blue",
+    "swyx": "blue",
+    "simonw": "blue",
+    "karpaborney": "blue",
+    # Media / news
+    "techcrunch": "business",
+    "theverge": "business",
+    "wired": "business",
+    "reuters": "business",
+    "bloomberg": "business",
+    "wsj": "business",
+    "nytimes": "business",
+    "twistartups": "business",
+}
+
+# Fix duplicates/typos in the verified list (Playwright scraper artifacts)
+# Keep clean lowercase usernames only
+KNOWN_VERIFIED_ACCOUNTS = {k.lower().strip(): v for k, v in KNOWN_VERIFIED_ACCOUNTS.items()}
 
 
 def extract_post_id(url: str) -> Optional[str]:
