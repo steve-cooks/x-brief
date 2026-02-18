@@ -94,12 +94,14 @@ function parsePostText(raw: string): TextSegment[] {
   return segments
 }
 
-function RichText({ text }: { text: string }) {
+function RichText({ text, hideUrls = false }: { text: string; hideUrls?: boolean }) {
   const segments = useMemo(() => parsePostText(text), [text])
   return (
     <>
       {segments.map((seg, i) => {
         if (seg.type === "text") return <Fragment key={i}>{seg.value}</Fragment>
+        // Hide URL segments when hideUrls is true (link card will show instead)
+        if (seg.type === "url" && hideUrls) return null
         return (
           <a
             key={i}
@@ -266,7 +268,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
 
         {/* Text */}
         <p className="mt-1 text-[15px] leading-5 text-gray-900 dark:text-white whitespace-pre-wrap break-words">
-          <RichText text={displayText} />
+          <RichText text={displayText} hideUrls />
           {isLong && !expanded && (
             <button
               className="text-[#1d9bf0] hover:underline ml-1 text-[15px]"
@@ -416,7 +418,7 @@ export function PostCard({
         {/* Post text with rich parsing */}
         <div className="mt-0.5">
           <p className="text-[15px] leading-5 text-gray-900 dark:text-white whitespace-pre-wrap break-words">
-            <RichText text={displayText} />
+            <RichText text={displayText} hideUrls />
             {isLongText && !textExpanded && (
               <button
                 className="text-[#1d9bf0] hover:underline ml-1 text-[15px]"
