@@ -199,7 +199,7 @@ export function BriefingView() {
       {!loading && briefing && (
         <Tabs key={briefing.generated_at} defaultValue="viral" className="w-full">
           {/* Tab navigation - X style */}
-          <div className="sticky top-[57px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
+          <div className="sticky top-[53px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
             <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
               <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
                 {TABS.map((tab) => (
