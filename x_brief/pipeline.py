@@ -242,7 +242,10 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
             # Strip "(pinned)" artifacts from scraped author data
             clean_author_name = (post.author_name or (user.name if user else post.author_username) or "").replace(" (pinned)", "")
             clean_author_username = (post.author_username or (user.username if user else "unknown") or "").replace(" (pinned)", "")
-            clean_avatar_url = avatar_url.replace(" (pinned)", "") if avatar_url else avatar_url
+            clean_avatar_url = avatar_url.replace(" (pinned)", "") if avatar_url else None
+            # Fallback to unavatar.io if no avatar URL from scraper
+            if not clean_avatar_url and clean_author_username:
+                clean_avatar_url = f"https://unavatar.io/twitter/{clean_author_username}"
 
             # Build quoted post data if present
             quoted_post_data = None
