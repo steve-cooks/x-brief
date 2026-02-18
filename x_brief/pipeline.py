@@ -154,7 +154,7 @@ async def run_briefing_from_scans(
     
     # 2. Load posts from scan data
     print(f"📂 Reading scans from {scan_dir} (last {hours}h)...")
-    all_posts = load_scan_posts(scan_dir, hours=hours)
+    all_posts, scan_verified = load_scan_posts(scan_dir, hours=hours)
     
     if not all_posts:
         print("⚠️ No posts found in scan data. Nothing to brief on.")
@@ -174,8 +174,8 @@ async def run_briefing_from_scans(
             print("⚠️ All scanned posts have already been briefed. Nothing new.")
             return "All posts already briefed."
     
-    # 4. Build users map from posts
-    users_map = build_users_from_posts(fresh_posts)
+    # 4. Build users map from posts (with verification data)
+    users_map = build_users_from_posts(fresh_posts, scan_verified=scan_verified)
     print(f"👥 Built {len(users_map)} user profiles from scan data")
     
     # 5. Curate briefing using existing scoring/curation logic
@@ -244,6 +244,24 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
             clean_author_username = (post.author_username or (user.username if user else "unknown") or "").replace(" (pinned)", "")
             clean_avatar_url = avatar_url.replace(" (pinned)", "") if avatar_url else avatar_url
 
+            # Build quoted post data if present
+            quoted_post_data = None
+            if post.quoted_post:
+                qp = post.quoted_post
+                quoted_post_data = {
+                    "authorName": qp.author_name,
+                    "authorUsername": qp.author_username,
+                    "text": qp.text,
+                    "postUrl": qp.post_url,
+                }
+                if qp.metrics:
+                    quoted_post_data["metrics"] = {
+                        "likes": qp.metrics.likes,
+                        "reposts": qp.metrics.reposts,
+                        "views": qp.metrics.views,
+                        "replies": qp.metrics.replies,
+                    }
+
             posts.append({
                 "authorName": clean_author_name,
                 "authorUsername": clean_author_username,
@@ -251,6 +269,7 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
                 "verified": verified_type,
                 "text": post.text,
                 "media": media_items,
+                "quotedPost": quoted_post_data,
                 "metrics": {
                     "likes": post.metrics.likes,
                     "reposts": post.metrics.reposts,
