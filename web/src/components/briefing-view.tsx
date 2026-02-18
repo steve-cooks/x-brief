@@ -166,22 +166,13 @@ export function BriefingView() {
       {/* Header - Fixed like X */}
       <header className="sticky top-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
         <div className="max-w-[598px] mx-auto">
-          <div className="flex items-center justify-between px-4 h-[57px]">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                𝕏 Brief
-              </h1>
-              {briefing && (
-                <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <span className="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-600"></span>
-                  <span>{generatedDate}</span>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center justify-between px-4 h-[53px]">
+            <h1 className="text-xl font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
+              𝕏 Brief
+            </h1>
             {briefing && (
-              <div className="flex items-center gap-3">
-                {/* Freshness indicator based on generated_at */}
-                <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] text-[#536471] dark:text-[#71767b]">
                   {minutesAgo < 1
                     ? "Updated just now"
                     : minutesAgo < 60
@@ -190,16 +181,10 @@ export function BriefingView() {
                     ? `Updated ${Math.floor(minutesAgo / 60)}h ago`
                     : `Updated ${Math.floor(minutesAgo / 1440)}d ago`}
                 </span>
-                {minutesAgo < 30 && (
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                    </span>
-                    <span className="text-sm font-medium text-green-600 dark:text-green-500">
-                      Live
-                    </span>
-                  </div>
+                {minutesAgo > 240 && (
+                  <span className="text-[13px] text-[#536471] dark:text-[#71767b]">
+                    · Data may be stale
+                  </span>
                 )}
               </div>
             )}
@@ -268,7 +253,7 @@ export function BriefingView() {
                   {/* Empty state */}
                   {posts.length === 0 && (
                     <div className="text-center py-20">
-                      <p className="text-base text-gray-600 dark:text-gray-400">
+                      <p className="text-[15px] text-[#536471] dark:text-[#71767b]">
                         No posts in this category
                       </p>
                     </div>
@@ -282,53 +267,23 @@ export function BriefingView() {
 
       {/* Empty state - no briefing */}
       {!loading && !briefing && (
-        <div className="max-w-[598px] mx-auto px-4 text-center py-20">
-          <p className="text-lg text-gray-600 dark:text-gray-400">
+        <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] px-4 text-center py-20">
+          <p className="text-[15px] text-[#536471] dark:text-[#71767b]">
             No briefing available yet.
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+          <p className="text-[13px] text-[#536471] dark:text-[#71767b] mt-2">
             Run the pipeline to generate your first briefing.
           </p>
         </div>
       )}
 
-      {/* Footer stats */}
+      {/* Footer — subtle single line */}
       {!loading && briefing && (
-        <div className="max-w-[598px] mx-auto px-4 py-8 border-t border-gray-100 dark:border-gray-900">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm">
-            <div className="flex items-center gap-6">
-              <div className="text-center sm:text-left">
-                <div className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {formatStat(briefing.stats.posts_scanned)}
-                </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                  posts scanned
-                </div>
-              </div>
-              <div className="w-px h-10 bg-gray-200 dark:bg-gray-800"></div>
-              <div className="text-center sm:text-left">
-                <div className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {briefing.stats.accounts_tracked}
-                </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                  accounts
-                </div>
-              </div>
-              <div className="w-px h-10 bg-gray-200 dark:bg-gray-800"></div>
-              <div className="text-center sm:text-left">
-                <div className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {briefing.stats.breakout_posts}
-                </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                  breakout
-                </div>
-              </div>
-            </div>
-          </div>
-          <p className="text-center text-xs text-gray-500 dark:text-gray-500 mt-6">
-            Generated{" "}
+        <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] px-4 py-6">
+          <p className="text-center text-[13px] text-[#536471] dark:text-[#71767b]">
+            Scanned {formatStat(briefing.stats.posts_scanned)} posts from{" "}
+            {briefing.stats.accounts_tracked} accounts · Generated{" "}
             {new Date(briefing.generated_at).toLocaleDateString("en-US", {
-              weekday: "long",
               month: "short",
               day: "numeric",
             })}{" "}
@@ -336,8 +291,7 @@ export function BriefingView() {
             {new Date(briefing.generated_at).toLocaleTimeString("en-US", {
               hour: "numeric",
               minute: "2-digit",
-            })}{" "}
-            · Powered by 𝕏 Brief
+            })}
           </p>
         </div>
       )}
