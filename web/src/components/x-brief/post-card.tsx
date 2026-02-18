@@ -186,6 +186,7 @@ interface PostMetrics {
   reposts?: number
   views?: number
   replies?: number
+  bookmarks?: number
 }
 
 function formatNumber(num: number): string {
@@ -232,7 +233,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
 
   return (
     <div
-      className="mt-3 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors"
+      className="mt-3 border border-[#eff3f4] dark:border-[#2f3336] rounded-2xl overflow-hidden cursor-pointer hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] transition-colors"
       onClick={(e) => {
         e.stopPropagation()
         if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
@@ -245,21 +246,21 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
             {post.authorAvatarUrl && (
               <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
             )}
-            <AvatarFallback className="bg-gray-200 dark:bg-gray-800 text-[10px] font-medium">
+            <AvatarFallback className="bg-[#eff3f4] dark:bg-[#2f3336] text-[10px] font-medium">
               {post.authorName?.[0]?.toUpperCase() || "?"}
             </AvatarFallback>
           </Avatar>
-          <span className="font-bold text-[13px] text-gray-900 dark:text-white leading-4">
+          <span className="font-bold text-[13px] text-[#0f1419] dark:text-[#e7e9ea] leading-4">
             {post.authorName}
           </span>
           {post.verified && <VerificationBadge type={post.verified} size={14} />}
-          <span className="text-[13px] text-gray-500 dark:text-gray-500 leading-4">
+          <span className="text-[13px] text-[#536471] dark:text-[#71767b] leading-4">
             @{post.authorUsername}
           </span>
           {(post.createdAt || post.timestamp) && (
             <>
-              <span className="text-gray-500 dark:text-gray-500 text-[13px]">·</span>
-              <span className="text-[13px] text-gray-500 dark:text-gray-500 leading-4">
+              <span className="text-[#536471] dark:text-[#71767b] text-[13px]">·</span>
+              <span className="text-[13px] text-[#536471] dark:text-[#71767b] leading-4">
                 {formatTimestamp(post.createdAt, post.timestamp)}
               </span>
             </>
@@ -267,7 +268,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
         </div>
 
         {/* Text */}
-        <p className="mt-1 text-[15px] leading-5 text-gray-900 dark:text-white whitespace-pre-wrap break-words">
+        <p className="mt-1 text-[15px] leading-5 text-[#0f1419] dark:text-[#e7e9ea] whitespace-pre-wrap break-words">
           <RichText text={displayText} hideUrls />
           {isLong && !expanded && (
             <button
@@ -290,7 +291,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
         <img
           src={post.media[0].url}
           alt={post.media[0].alt_text || "Image"}
-          className="w-full max-h-[200px] object-cover border-t border-gray-200 dark:border-gray-800"
+          className="w-full max-h-[200px] object-cover border-t border-[#eff3f4] dark:border-[#2f3336]"
         />
       )}
     </div>
@@ -385,7 +386,7 @@ export function PostCard({
           {authorAvatarUrl && (
             <AvatarImage src={authorAvatarUrl} alt={authorName} />
           )}
-          <AvatarFallback className="bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium">
+          <AvatarFallback className="bg-[#eff3f4] dark:bg-[#2f3336] text-[#536471] dark:text-[#71767b] text-sm font-medium">
             {initials}
           </AvatarFallback>
         </Avatar>
@@ -395,20 +396,20 @@ export function PostCard({
       <div className="flex-1 min-w-0">
         {/* Author info — single line like X */}
         <div className="flex items-center gap-1 min-w-0">
-          <span className="font-bold text-[15px] leading-5 text-gray-900 dark:text-white truncate">
+          <span className="font-bold text-[15px] leading-5 text-[#0f1419] dark:text-[#e7e9ea] truncate">
             {authorName}
           </span>
 
           {verified && <VerificationBadge type={verified} />}
 
-          <span className="text-[15px] leading-5 text-gray-500 dark:text-gray-500 truncate flex-shrink-[2]">
+          <span className="text-[15px] leading-5 text-[#536471] dark:text-[#71767b] truncate flex-shrink-[2]">
             @{authorUsername}
           </span>
 
           {displayTime && (
             <>
-              <span className="text-gray-500 dark:text-gray-500 flex-shrink-0">·</span>
-              <span className="text-[15px] leading-5 text-gray-500 dark:text-gray-500 flex-shrink-0">
+              <span className="text-[#536471] dark:text-[#71767b] flex-shrink-0">·</span>
+              <span className="text-[15px] leading-5 text-[#536471] dark:text-[#71767b] flex-shrink-0">
                 {displayTime}
               </span>
             </>
@@ -417,7 +418,7 @@ export function PostCard({
 
         {/* Post text with rich parsing */}
         <div className="mt-0.5">
-          <p className="text-[15px] leading-5 text-gray-900 dark:text-white whitespace-pre-wrap break-words">
+          <p className="text-[15px] leading-[20px] text-[#0f1419] dark:text-[#e7e9ea] whitespace-pre-wrap break-words">
             <RichText text={displayText} hideUrls />
             {isLongText && !textExpanded && (
               <button
@@ -444,12 +445,12 @@ export function PostCard({
           <div
             className={`mt-3 ${
               media.length === 1 ? "" : "grid grid-cols-2 gap-0.5"
-            } rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800`}
+            } rounded-2xl overflow-hidden border border-[#eff3f4] dark:border-[#2f3336]`}
           >
             {media.map((item, index) => (
               <div
                 key={index}
-                className={`relative bg-gray-100 dark:bg-gray-900 ${
+                className={`relative bg-[#eff3f4] dark:bg-[#2f3336] ${
                   media.length === 1
                     ? "aspect-video max-h-[500px]"
                     : "aspect-square"
@@ -511,12 +512,12 @@ export function PostCard({
           </div>
         )}
 
-        {/* Engagement metrics — X layout: replies · reposts · likes · views · bookmark · share · external */}
+        {/* Engagement metrics — X layout: replies · reposts · likes · views · bookmark · share */}
         {metrics && (
-          <div className="mt-1 flex items-center justify-between max-w-[425px] -ml-2">
+          <div className="mt-1 flex items-center justify-between -ml-2">
             {/* Replies */}
-            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-500 p-2 min-w-[40px]">
-              <MessageCircle className="h-[18px] w-[18px]" />
+            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+              <MessageCircle className="h-[18.75px] w-[18.75px]" />
               {(metrics.replies ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.replies!)}
@@ -525,8 +526,8 @@ export function PostCard({
             </div>
 
             {/* Reposts */}
-            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-500 p-2 min-w-[40px]">
-              <Repeat2 className="h-[18px] w-[18px]" />
+            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+              <Repeat2 className="h-[18.75px] w-[18.75px]" />
               {(metrics.reposts ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.reposts!)}
@@ -535,8 +536,8 @@ export function PostCard({
             </div>
 
             {/* Likes */}
-            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-500 p-2 min-w-[40px]">
-              <Heart className="h-[18px] w-[18px]" />
+            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+              <Heart className="h-[18.75px] w-[18.75px]" />
               {(metrics.likes ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.likes!)}
@@ -545,8 +546,8 @@ export function PostCard({
             </div>
 
             {/* Views */}
-            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-500 p-2 min-w-[40px]">
-              <Eye className="h-[18px] w-[18px]" />
+            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+              <Eye className="h-[18.75px] w-[18.75px]" />
               {(metrics.views ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.views!)}
@@ -554,28 +555,20 @@ export function PostCard({
               )}
             </div>
 
-            {/* Bookmark (decorative) */}
-            <div className="flex items-center text-gray-500 dark:text-gray-500 p-2">
-              <Bookmark className="h-[18px] w-[18px]" />
+            {/* Bookmark */}
+            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+              <Bookmark className="h-[18.75px] w-[18.75px]" />
+              {(metrics.bookmarks ?? 0) > 0 && (
+                <span className="text-[13px] leading-4">
+                  {formatNumber(metrics.bookmarks!)}
+                </span>
+              )}
             </div>
 
-            {/* Share (decorative) */}
-            <div className="flex items-center text-gray-500 dark:text-gray-500 p-2">
-              <Share className="h-[18px] w-[18px]" />
+            {/* Share */}
+            <div className="flex items-center text-[#536471] dark:text-[#71767b] p-2">
+              <Share className="h-[18.75px] w-[18.75px]" />
             </div>
-
-            {/* External link */}
-            {postUrl && (
-              <a
-                href={postUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center text-gray-500 dark:text-gray-500 hover:text-[#1d9bf0] transition-colors p-2"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ExternalLink className="h-[18px] w-[18px]" />
-              </a>
-            )}
           </div>
         )}
       </div>

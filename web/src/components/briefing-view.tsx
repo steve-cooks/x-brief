@@ -24,7 +24,7 @@ interface BriefingData {
         video_url?: string
         alt_text?: string
       }>
-      metrics?: { likes?: number; reposts?: number; views?: number; replies?: number }
+      metrics?: { likes?: number; reposts?: number; views?: number; replies?: number; bookmarks?: number }
       postUrl?: string
       timestamp?: string
       createdAt?: string
@@ -42,7 +42,7 @@ interface BriefingData {
           video_url?: string
           alt_text?: string
         }>
-        metrics?: { likes?: number; reposts?: number; views?: number; replies?: number }
+        metrics?: { likes?: number; reposts?: number; views?: number; replies?: number; bookmarks?: number }
         postUrl?: string
         timestamp?: string
         createdAt?: string
