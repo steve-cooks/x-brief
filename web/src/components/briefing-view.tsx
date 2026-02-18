@@ -74,10 +74,10 @@ function LoadingSkeleton() {
 
 // Fixed tab definitions — always show all 4 tabs
 const TABS = [
-  { id: "viral", label: "VIRAL", mobileLabel: "VIRAL", emoji: "\uD83D\uDD25", sectionTitle: "VIRAL \uD83D\uDD25" },
-  { id: "top_stories", label: "TOP STORIES", mobileLabel: "TOP", emoji: "\uD83D\uDCCC", sectionTitle: "TOP STORIES" },
-  { id: "trending", label: "TRENDING", mobileLabel: "TRENDING", emoji: "\uD83D\uDD25", sectionTitle: "TRENDING IN YOUR NICHES" },
-  { id: "worth_a_look", label: "WORTH A LOOK", mobileLabel: "PICKS", emoji: "\uD83D\uDCA1", sectionTitle: "WORTH A LOOK" },
+  { id: "viral", label: "Viral", sectionTitle: "VIRAL \uD83D\uDD25" },
+  { id: "top_stories", label: "Top Stories", sectionTitle: "TOP STORIES" },
+  { id: "trending", label: "Trending", sectionTitle: "TRENDING IN YOUR NICHES" },
+  { id: "worth_a_look", label: "Picks", sectionTitle: "WORTH A LOOK" },
 ] as const
 
 type Post = BriefingData["sections"][number]["posts"][number]
@@ -216,18 +216,14 @@ export function BriefingView() {
           {/* Tab navigation - X style */}
           <div className="sticky top-[57px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
             <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
-              <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 inline-flex justify-start min-w-full">
+              <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
                 {TABS.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="relative flex-shrink-0 px-4 py-4 rounded-none border-0 bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 data-[state=active]:text-gray-900 data-[state=active]:bg-transparent dark:data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:font-semibold transition-colors after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[3px] after:bg-blue-500 after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
+                    className="relative flex-1 py-4 rounded-none border-0 bg-transparent text-[15px] font-medium text-[#536471] dark:text-[#71767b] hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] data-[state=active]:text-[#0f1419] dark:data-[state=active]:text-[#e7e9ea] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-[3px] after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                   >
-                    <span className="flex items-center gap-2 text-[15px] whitespace-nowrap">
-                      <span>{tab.emoji}</span>
-                      <span className="hidden sm:inline">{tab.label}</span>
-                      <span className="sm:hidden text-[13px]">{tab.mobileLabel}</span>
-                    </span>
+                    <span className="text-[15px]">{tab.label}</span>
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -245,25 +241,6 @@ export function BriefingView() {
                   value={tab.id}
                   className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
                 >
-                  {/* Section stats */}
-                  <div className="px-4 py-3 bg-white dark:bg-black border-b border-gray-100 dark:border-gray-900">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {posts.length}
-                      </span>
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {posts.length === 1 ? "post" : "posts"}
-                      </span>
-                      <span className="text-gray-400 dark:text-gray-600">·</span>
-                      <span className="text-gray-600 dark:text-gray-400 sm:hidden">
-                        Past {briefing.period_hours}h
-                      </span>
-                      <span className="text-gray-600 dark:text-gray-400 hidden sm:inline">
-                        {generatedDate}
-                      </span>
-                    </div>
-                  </div>
-
                   {/* Posts feed */}
                   {posts.length > 0 && (
                     <div>
