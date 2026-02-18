@@ -164,8 +164,8 @@ export function BriefingView() {
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       {/* Header - Fixed like X */}
-      <header className="sticky top-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-2xl mx-auto">
+      <header className="sticky top-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
+        <div className="max-w-[598px] mx-auto">
           <div className="flex items-center justify-between px-4 h-[57px]">
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -214,8 +214,8 @@ export function BriefingView() {
       {!loading && briefing && (
         <Tabs key={briefing.generated_at} defaultValue="viral" className="w-full">
           {/* Tab navigation - X style */}
-          <div className="sticky top-[57px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-            <div className="max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
+          <div className="sticky top-[57px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
+            <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
               <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 inline-flex justify-start min-w-full">
                 {TABS.map((tab) => (
                   <TabsTrigger
@@ -235,7 +235,7 @@ export function BriefingView() {
           </div>
 
           {/* Tab content */}
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] min-h-screen">
             {TABS.map((tab) => {
               const posts = getPostsForTab(briefing, tab.id)
               const isViral = tab.id === "viral"
@@ -266,14 +266,14 @@ export function BriefingView() {
 
                   {/* Posts feed */}
                   {posts.length > 0 && (
-                    <div className="divide-y divide-gray-100 dark:divide-gray-900">
+                    <div>
                       {posts.map((post, index) => (
                         <div
                           key={`${post.authorUsername}-${index}`}
-                          className={`px-4 py-3 transition-colors cursor-pointer ${
+                          className={`px-4 py-3 border-b border-[#eff3f4] dark:border-[#2f3336] transition-colors cursor-pointer ${
                             isViral
                               ? "bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-950/20 dark:to-red-950/20 border-l-4 border-orange-500 hover:from-orange-50 hover:to-red-50 dark:hover:from-orange-950/30 dark:hover:to-red-950/30"
-                              : "hover:bg-gray-50/50 dark:hover:bg-gray-900/30"
+                              : "hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)]"
                           }`}
                           onClick={() => {
                             if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
@@ -310,7 +310,7 @@ export function BriefingView() {
 
       {/* Empty state - no briefing */}
       {!loading && !briefing && (
-        <div className="max-w-2xl mx-auto px-4 text-center py-20">
+        <div className="max-w-[598px] mx-auto px-4 text-center py-20">
           <p className="text-lg text-gray-600 dark:text-gray-400">
             No briefing available yet.
           </p>
@@ -322,7 +322,7 @@ export function BriefingView() {
 
       {/* Footer stats */}
       {!loading && briefing && (
-        <div className="max-w-2xl mx-auto px-4 py-8 border-t border-gray-100 dark:border-gray-900">
+        <div className="max-w-[598px] mx-auto px-4 py-8 border-t border-gray-100 dark:border-gray-900">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm">
             <div className="flex items-center gap-6">
               <div className="text-center sm:text-left">
