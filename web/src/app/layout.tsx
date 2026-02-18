@@ -32,7 +32,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
-      <body className="antialiased font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Segoe_UI','Helvetica_Neue',Arial,sans-serif]">
+      <body className="antialiased font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]">
         {children}
       </body>
     </html>

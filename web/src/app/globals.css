@@ -52,107 +52,106 @@
   /* Core Design Tokens */
   --radius: 0.75rem;
   
-  /* Apple System Font Stack */
-  --font-apple-system: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  /* X/Twitter Font Stack */
+  --font-apple-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   
-  /* Light Mode - Clean & Minimal (Apple.com inspired) */
-  --background: 255 255 255;           /* Pure white */
-  --foreground: 29 29 31;              /* Near black for text */
+  /* Light Mode - X/Twitter exact palette */
+  --background: 255 255 255;           /* #ffffff */
+  --foreground: 15 20 25;              /* #0f1419 - X primary text */
   
-  --card: 255 255 255;                 /* White cards */
-  --card-foreground: 29 29 31;
+  --card: 255 255 255;
+  --card-foreground: 15 20 25;
   
   --popover: 255 255 255;
-  --popover-foreground: 29 29 31;
+  --popover-foreground: 15 20 25;
   
-  /* Apple Blue - Primary color */
-  --primary: 0 113 227;                /* Apple Blue: hsl(211, 100%, 45%) */
+  /* X Blue - Primary color */
+  --primary: 29 155 240;               /* #1d9bf0 - X link blue */
   --primary-foreground: 255 255 255;
   
   /* Subtle gray backgrounds */
-  --secondary: 247 247 247;            /* Very light gray */
-  --secondary-foreground: 29 29 31;
+  --secondary: 247 249 249;            /* Near-white */
+  --secondary-foreground: 15 20 25;
   
-  --muted: 247 247 247;
-  --muted-foreground: 142 142 147;     /* Medium gray */
+  --muted: 247 249 249;
+  --muted-foreground: 83 100 113;      /* #536471 - X secondary text */
   
-  --accent: 242 242 247;               /* Slightly darker gray */
-  --accent-foreground: 29 29 31;
+  --accent: 239 243 244;               /* #eff3f4 - X border color */
+  --accent-foreground: 15 20 25;
   
-  /* Destructive: Apple Red */
-  --destructive: 255 59 48;            /* Apple System Red */
+  /* Destructive: Red */
+  --destructive: 244 33 46;            /* X red */
   
-  /* Borders & Inputs - Subtle */
-  --border: 229 229 234;               /* Light gray border */
-  --input: 229 229 234;
-  --ring: 0 113 227;                   /* Apple Blue for focus rings */
+  /* Borders & Inputs - X palette */
+  --border: 239 243 244;               /* #eff3f4 - X border */
+  --input: 239 243 244;
+  --ring: 29 155 240;                  /* X blue for focus rings */
   
-  /* Charts - Apple-inspired palette */
-  --chart-1: 0 113 227;                /* Apple Blue */
-  --chart-2: 52 199 89;                /* Apple Green */
-  --chart-3: 255 149 0;                /* Apple Orange */
-  --chart-4: 255 45 85;                /* Apple Pink */
-  --chart-5: 175 82 222;               /* Apple Purple */
+  /* Charts */
+  --chart-1: 29 155 240;
+  --chart-2: 0 186 124;
+  --chart-3: 255 149 0;
+  --chart-4: 249 24 128;
+  --chart-5: 120 86 255;
   
   /* Sidebar */
-  --sidebar: 247 247 247;
-  --sidebar-foreground: 29 29 31;
-  --sidebar-primary: 0 113 227;
+  --sidebar: 255 255 255;
+  --sidebar-foreground: 15 20 25;
+  --sidebar-primary: 29 155 240;
   --sidebar-primary-foreground: 255 255 255;
-  --sidebar-accent: 242 242 247;
-  --sidebar-accent-foreground: 29 29 31;
-  --sidebar-border: 229 229 234;
-  --sidebar-ring: 0 113 227;
+  --sidebar-accent: 239 243 244;
+  --sidebar-accent-foreground: 15 20 25;
+  --sidebar-border: 239 243 244;
+  --sidebar-ring: 29 155 240;
 }
 
-/* Dark Mode - Deep & Premium (Apple.com dark mode inspired) */
+/* Dark Mode - X/Twitter exact dark palette */
 @media (prefers-color-scheme: dark) {
   :root {
-  --background: 0 0 0;                 /* True black */
-  --foreground: 255 255 255;           /* Pure white text */
+  --background: 0 0 0;                 /* #000000 - X dark bg */
+  --foreground: 231 233 234;           /* #e7e9ea - X dark primary text */
   
-  --card: 28 28 30;                    /* Dark gray cards */
-  --card-foreground: 255 255 255;
+  --card: 22 24 28;
+  --card-foreground: 231 233 234;
   
-  --popover: 28 28 30;
-  --popover-foreground: 255 255 255;
+  --popover: 22 24 28;
+  --popover-foreground: 231 233 234;
   
-  /* Apple Blue - Slightly brighter for dark mode */
-  --primary: 10 132 255;               /* Apple Blue (dark mode) */
+  /* X Blue */
+  --primary: 29 155 240;               /* #1d9bf0 */
   --primary-foreground: 255 255 255;
   
-  --secondary: 44 44 46;               /* Medium dark gray */
-  --secondary-foreground: 255 255 255;
+  --secondary: 22 24 28;
+  --secondary-foreground: 231 233 234;
   
-  --muted: 44 44 46;
-  --muted-foreground: 174 174 178;     /* Light gray text */
+  --muted: 22 24 28;
+  --muted-foreground: 113 118 123;     /* #71767b - X dark secondary text */
   
-  --accent: 58 58 60;                  /* Lighter gray */
-  --accent-foreground: 255 255 255;
+  --accent: 47 51 54;                  /* #2f3336 - X dark border */
+  --accent-foreground: 231 233 234;
   
-  /* Destructive: Brighter red for dark mode */
-  --destructive: 255 69 58;            /* Apple System Red (dark) */
+  --destructive: 244 33 46;
   
-  --border: 58 58 60;                  /* Dark borders */
-  --input: 58 58 60;
-  --ring: 10 132 255;                  /* Apple Blue focus ring */
+  --border: 47 51 54;                  /* #2f3336 - X dark border */
+  --input: 47 51 54;
+  --ring: 29 155 240;
   
-  /* Charts - Dark mode optimized */
-  --chart-1: 10 132 255;               /* Apple Blue */
-  --chart-2: 48 209 88;                /* Apple Green */
-  --chart-3: 255 159 10;               /* Apple Orange */
-  --chart-4: 255 55 95;                /* Apple Pink */
-  --chart-5: 191 90 242;               /* Apple Purple */
+  /* Charts */
+  --chart-1: 29 155 240;
+  --chart-2: 0 186 124;
+  --chart-3: 255 149 0;
+  --chart-4: 249 24 128;
+  --chart-5: 120 86 255;
   
   /* Sidebar */
-  --sidebar: 28 28 30;
-  --sidebar-foreground: 255 255 255;
-  --sidebar-primary: 10 132 255;
+  --sidebar: 0 0 0;
+  --sidebar-foreground: 231 233 234;
+  --sidebar-primary: 29 155 240;
   --sidebar-primary-foreground: 255 255 255;
-  --sidebar-accent: 44 44 46;
-  --sidebar-accent-foreground: 255 255 255;
-  --sidebar-border: 58 58 60;
-  --sidebar-ring: 10 132 255;
+  --sidebar-accent: 47 51 54;
+  --sidebar-accent-foreground: 231 233 234;
+  --sidebar-border: 47 51 54;
+  --sidebar-ring: 29 155 240;
   }
 }
 
