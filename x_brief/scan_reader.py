@@ -265,6 +265,10 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
             metrics_data.get('views', 0)
             or post_data.get('views', 0)
         )
+        bookmarks = parse_human_number(
+            metrics_data.get('bookmarks', 0)
+            or post_data.get('bookmarks', 0)
+        )
         
         metrics = PostMetrics(
             likes=likes,
@@ -272,6 +276,7 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
             replies=replies,
             views=views,
             quotes=0,
+            bookmarks=bookmarks,
         )
         
         # Extract media

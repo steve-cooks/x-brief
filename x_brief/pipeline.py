@@ -260,6 +260,7 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
                         "reposts": qp.metrics.reposts,
                         "views": qp.metrics.views,
                         "replies": qp.metrics.replies,
+                        "bookmarks": qp.metrics.bookmarks,
                     }
 
             posts.append({
@@ -275,6 +276,7 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
                     "reposts": post.metrics.reposts,
                     "views": post.metrics.views,
                     "replies": post.metrics.replies,
+                    "bookmarks": post.metrics.bookmarks,
                 },
                 "postUrl": f"https://x.com/{clean_author_username}/status/{post.id}",
                 "timestamp": _relative_time(post.created_at),

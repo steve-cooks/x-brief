@@ -14,6 +14,7 @@ class PostMetrics(BaseModel):
     replies: int = 0
     views: int = 0
     quotes: int = 0
+    bookmarks: int = 0
 
 
 class PostMedia(BaseModel):
