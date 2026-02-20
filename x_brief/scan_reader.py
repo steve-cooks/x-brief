@@ -346,8 +346,8 @@ def load_scan_posts(scan_dir: str, hours: int = 48) -> tuple[list[Post], dict[st
             with open(json_file, 'r') as f:
                 scan_data = json.load(f)
             
-            # Parse scan time
-            scan_time_str = scan_data.get('scan_time')
+            # Parse scan time — accept both 'scan_time' and 'timestamp' keys
+            scan_time_str = scan_data.get('scan_time') or scan_data.get('timestamp')
             if not scan_time_str:
                 continue
             
@@ -359,8 +359,8 @@ def load_scan_posts(scan_dir: str, hours: int = 48) -> tuple[list[Post], dict[st
             
             scans_loaded += 1
             
-            # Process viral_alerts and notable_posts
-            for section in ('viral_alerts', 'notable_posts'):
+            # Process viral_alerts, notable_posts, and top-level posts list (newer format)
+            for section in ('viral_alerts', 'notable_posts', 'posts'):
                 for post_data in scan_data.get(section, []):
                     # Collect verification data from scan
                     verified_val = post_data.get('verified')
