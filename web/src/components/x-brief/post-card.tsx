@@ -702,7 +702,7 @@ export function PostCard({
   }
 
   return (
-    <article className="flex gap-3 group min-h-[44px]">
+    <article className="flex gap-3 group min-h-[44px] min-w-0">
       {/* Avatar */}
       <div className="flex-shrink-0">
         <Avatar className="h-10 w-10">
@@ -831,14 +831,14 @@ export function PostCard({
                 <Bookmark className="h-[18.75px] w-[18.75px]" />
               </div>
               {(metrics.bookmarks ?? 0) > 0 && (
-                <span className="text-[13px] leading-4">
+                <span className="text-[13px] leading-4 hidden sm:inline">
                   {formatNumber(metrics.bookmarks!)}
                 </span>
               )}
             </div>
 
-            {/* Share — blue on hover */}
-            <div className="group/metric flex items-center text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+            {/* Share — blue on hover, hidden on small mobile */}
+            <div className="group/metric hidden sm:flex items-center text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
               <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
                 <Share className="h-[18.75px] w-[18.75px]" />
               </div>

@@ -209,7 +209,7 @@ export function BriefingView() {
       : `${Math.floor(minutesAgo / 1440)}d ago`
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-[598px] mx-auto">
