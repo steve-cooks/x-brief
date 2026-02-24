@@ -107,15 +107,44 @@ def _extract_quoted_post(data: dict) -> Optional[dict]:
     if user.get("is_blue_verified"):
         verified = "blue"
 
+    # Resolve t.co URLs in quoted post text
+    qt_text = qt.get("text", "")
+    qt_entities = qt.get("entities", {})
+    qt_urls = qt_entities.get("urls", [])
+    for url_entity in qt_urls:
+        tco = url_entity.get("url", "")
+        display = url_entity.get("display_url", "")
+        expanded = url_entity.get("expanded_url", "")
+        if tco and display:
+            qt_text = qt_text.replace(tco, display)
+
+    # Extract link card from quoted tweet entities (for articles/links)
+    qt_link_card = None
+    if qt_urls:
+        first_url = qt_urls[0]
+        expanded = first_url.get("expanded_url", "")
+        display = first_url.get("display_url", "")
+        if expanded:
+            domain = re.sub(r"^https?://", "", expanded).split("/")[0]
+            qt_link_card = {
+                "title": display,
+                "description": None,
+                "thumbnail": None,
+                "domain": domain,
+                "url": expanded,
+            }
+
     quoted = {
         "authorName": user.get("name", ""),
         "authorUsername": screen_name,
         "authorAvatarUrl": avatar_url or None,
         "verified": verified,
-        "text": qt.get("text", ""),
+        "text": qt_text,
         "postUrl": f"https://x.com/{screen_name}/status/{tweet_id}" if screen_name and tweet_id else None,
         "media": _extract_media(qt),
     }
+    if qt_link_card:
+        quoted["linkCard"] = qt_link_card
     return quoted
 
 

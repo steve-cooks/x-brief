@@ -516,6 +516,7 @@ interface QuotedPostData {
   postUrl?: string
   timestamp?: string
   createdAt?: string
+  linkCard?: LinkCardData | null
 }
 
 function QuotedPost({ post }: { post: QuotedPostData }) {
@@ -594,6 +595,29 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
             className="w-full max-h-[200px] object-cover border-t border-border"
           />
         )}
+
+      {/* Quoted link card (for articles/links) */}
+      {post.linkCard && post.linkCard.url && (
+        <div className="mx-3 mb-2.5 border border-border rounded-xl overflow-hidden">
+          {post.linkCard.thumbnail && (
+            <img
+              src={proxyUrl(post.linkCard.thumbnail)}
+              alt=""
+              className="w-full max-h-[150px] object-cover"
+            />
+          )}
+          <div className="px-3 py-2">
+            <span className="text-[13px] text-muted-foreground">
+              {post.linkCard.domain}
+            </span>
+            {post.linkCard.title && (
+              <p className="text-[15px] text-foreground leading-5 line-clamp-2">
+                {post.linkCard.title}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -831,7 +855,7 @@ export function PostCard({
                 <Bookmark className="h-[18.75px] w-[18.75px]" />
               </div>
               {(metrics.bookmarks ?? 0) > 0 && (
-                <span className="text-[13px] leading-4 hidden sm:inline">
+                <span className="text-[13px] leading-4">
                   {formatNumber(metrics.bookmarks!)}
                 </span>
               )}
