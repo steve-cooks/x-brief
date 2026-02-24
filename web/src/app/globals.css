@@ -106,28 +106,28 @@
   --sidebar-ring: 29 155 240;
 }
 
-/* Dark Mode CSS variables — applied via .dark class on <html> */
+/* Dark Mode CSS variables — X "Lights Out" palette (pure black) */
 .dark {
-  --background: 13 17 23;              /* #0D1117 - GitHub-style dark */
+  --background: 0 0 0;                 /* #000000 - X Lights Out */
   --foreground: 231 233 234;           /* #e7e9ea - X dark primary text */
   
-  --card: 22 27 34;                    /* #16181b slightly elevated */
+  --card: 0 0 0;                       /* #000000 - no card elevation */
   --card-foreground: 231 233 234;
   
-  --popover: 22 27 34;
+  --popover: 22 24 28;                 /* #16181C - X subtle dark */
   --popover-foreground: 231 233 234;
   
   /* X Blue */
   --primary: 29 155 240;               /* #1d9bf0 */
   --primary-foreground: 255 255 255;
   
-  --secondary: 22 27 34;
+  --secondary: 22 24 28;              /* #16181C */
   --secondary-foreground: 231 233 234;
   
-  --muted: 22 27 34;
+  --muted: 22 24 28;                  /* #16181C */
   --muted-foreground: 113 118 123;     /* #71767b - X dark secondary text */
   
-  --accent: 47 51 54;                  /* #2f3336 - X dark border */
+  --accent: 22 24 28;                  /* #16181C - X subtle hover dark */
   --accent-foreground: 231 233 234;
   
   --destructive: 244 33 46;
@@ -144,11 +144,11 @@
   --chart-5: 120 86 255;
   
   /* Sidebar */
-  --sidebar: 13 17 23;
+  --sidebar: 0 0 0;                    /* #000000 */
   --sidebar-foreground: 231 233 234;
   --sidebar-primary: 29 155 240;
   --sidebar-primary-foreground: 255 255 255;
-  --sidebar-accent: 47 51 54;
+  --sidebar-accent: 22 24 28;          /* #16181C */
   --sidebar-accent-foreground: 231 233 234;
   --sidebar-border: 47 51 54;
   --sidebar-ring: 29 155 240;

@@ -267,13 +267,10 @@ export function BriefingView() {
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-muted-foreground hover:bg-accent/30 data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-[3px] after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
+                    className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-muted-foreground hover:bg-foreground/[0.03] data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-1 after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                   >
                     <span className="text-[15px] whitespace-nowrap">
                       {tab.label}
-                      <span className="ml-1.5 text-[12px] font-normal opacity-60">
-                        {tab.count}
-                      </span>
                     </span>
                   </TabsTrigger>
                 ))}
@@ -282,7 +279,7 @@ export function BriefingView() {
           </div>
 
           {/* Tab content */}
-          <div className="max-w-[598px] mx-auto border-x border-border min-h-screen">
+          <div className="max-w-[598px] mx-auto md:border-x md:border-border min-h-screen">
             {availableTabs.map((tab) => (
               <TabsContent
                 key={tab.id}
@@ -293,7 +290,7 @@ export function BriefingView() {
                   {tab.posts.map((post, index) => (
                     <div
                       key={`${post.authorUsername}-${index}`}
-                      className="px-4 py-3 border-b border-border cursor-pointer hover:bg-accent/30 transition-colors"
+                      className="px-4 py-3 border-b border-border cursor-pointer hover:bg-foreground/[0.03] transition-colors"
                       onClick={() => {
                         if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
                       }}
@@ -310,7 +307,7 @@ export function BriefingView() {
 
       {/* No briefing yet */}
       {!loading && (!briefing || availableTabs.length === 0) && (
-        <div className="max-w-[598px] mx-auto border-x border-border px-4 text-center py-20">
+        <div className="max-w-[598px] mx-auto md:border-x md:border-border px-4 text-center py-20">
           <p className="text-[15px] text-muted-foreground">
             No briefing available yet.
           </p>
@@ -322,12 +319,12 @@ export function BriefingView() {
 
       {/* Footer */}
       {!loading && briefing && (
-        <div className="max-w-[598px] mx-auto border-x border-border px-4 py-6 border-t border-t-border">
-          <p className="text-center text-[13px] text-muted-foreground">
+        <div className="max-w-[598px] mx-auto md:border-x md:border-border px-4 py-8 border-t border-t-border">
+          <p className="text-center text-[12px] text-muted-foreground/60">
             Scanned {formatStat(briefing.stats.posts_scanned)} posts from{" "}
             {briefing.stats.accounts_tracked} accounts
           </p>
-          <p className="text-center text-[12px] text-muted-foreground mt-1 opacity-70">
+          <p className="text-center text-[11px] text-muted-foreground/40 mt-1">
             Last updated {formatLastUpdated(briefing.generated_at)}
           </p>
         </div>

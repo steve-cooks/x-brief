@@ -146,7 +146,7 @@ function LinkCard({ url }: { url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-3 flex items-center gap-2 border border-border rounded-2xl px-3 py-2.5 transition-colors hover:bg-accent/30 bg-background"
+      className="mt-3 flex items-center gap-2 border border-border rounded-2xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.03] bg-background"
       onClick={(e) => e.stopPropagation()}
     >
       <span className="text-[13px] text-muted-foreground truncate">
@@ -233,7 +233,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
 
   return (
     <div
-      className="mt-3 border border-border rounded-2xl overflow-hidden cursor-pointer hover:bg-accent/30 transition-colors"
+      className="mt-3 border border-border rounded-2xl overflow-hidden cursor-pointer hover:bg-foreground/[0.03] transition-colors"
       onClick={(e) => {
         e.stopPropagation()
         if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
@@ -515,9 +515,11 @@ export function PostCard({
         {/* Engagement metrics — X layout: replies · reposts · likes · views · bookmark · share */}
         {metrics && (
           <div className="mt-1 flex items-center justify-between -ml-2">
-            {/* Replies */}
-            <div className="flex items-center gap-1 text-muted-foreground p-2">
-              <MessageCircle className="h-[18.75px] w-[18.75px]" />
+            {/* Replies — blue on hover */}
+            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
+                <MessageCircle className="h-[18.75px] w-[18.75px]" />
+              </div>
               {(metrics.replies ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.replies!)}
@@ -525,9 +527,11 @@ export function PostCard({
               )}
             </div>
 
-            {/* Reposts */}
-            <div className="flex items-center gap-1 text-muted-foreground p-2">
-              <Repeat2 className="h-[18.75px] w-[18.75px]" />
+            {/* Reposts — green on hover */}
+            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#00ba7c] cursor-pointer">
+              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#00ba7c]/10">
+                <Repeat2 className="h-[18.75px] w-[18.75px]" />
+              </div>
               {(metrics.reposts ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.reposts!)}
@@ -535,9 +539,11 @@ export function PostCard({
               )}
             </div>
 
-            {/* Likes */}
-            <div className="flex items-center gap-1 text-muted-foreground p-2">
-              <Heart className="h-[18.75px] w-[18.75px]" />
+            {/* Likes — pink on hover */}
+            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#f91880] cursor-pointer">
+              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#f91880]/10">
+                <Heart className="h-[18.75px] w-[18.75px]" />
+              </div>
               {(metrics.likes ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.likes!)}
@@ -545,9 +551,11 @@ export function PostCard({
               )}
             </div>
 
-            {/* Views */}
-            <div className="flex items-center gap-1 text-muted-foreground p-2">
-              <Eye className="h-[18.75px] w-[18.75px]" />
+            {/* Views — blue on hover */}
+            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
+                <Eye className="h-[18.75px] w-[18.75px]" />
+              </div>
               {(metrics.views ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.views!)}
@@ -555,9 +563,11 @@ export function PostCard({
               )}
             </div>
 
-            {/* Bookmark */}
-            <div className="flex items-center gap-1 text-muted-foreground p-2">
-              <Bookmark className="h-[18.75px] w-[18.75px]" />
+            {/* Bookmark — blue on hover */}
+            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
+                <Bookmark className="h-[18.75px] w-[18.75px]" />
+              </div>
               {(metrics.bookmarks ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
                   {formatNumber(metrics.bookmarks!)}
@@ -565,9 +575,11 @@ export function PostCard({
               )}
             </div>
 
-            {/* Share */}
-            <div className="flex items-center text-muted-foreground p-2">
-              <Share className="h-[18.75px] w-[18.75px]" />
+            {/* Share — blue on hover */}
+            <div className="group/metric flex items-center text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
+                <Share className="h-[18.75px] w-[18.75px]" />
+              </div>
             </div>
           </div>
         )}
