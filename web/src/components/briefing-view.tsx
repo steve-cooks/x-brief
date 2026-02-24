@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useTheme } from "next-themes"
 import { PostCard } from "@/components/x-brief/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -97,32 +98,22 @@ function LoadingSkeleton() {
 }
 
 function ThemeToggle() {
-  const [isDark, setIsDark] = useState<boolean | null>(null)
+  const { theme, setTheme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Read initial state from html class
-    setIsDark(document.documentElement.classList.contains("dark"))
+    setMounted(true)
   }, [])
 
-  const toggle = () => {
-    const next = !isDark
-    setIsDark(next)
-    if (next) {
-      document.documentElement.classList.add("dark")
-      localStorage.setItem("theme", "dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-      localStorage.setItem("theme", "light")
-    }
-  }
+  if (!mounted) return null // avoid hydration mismatch
 
-  if (isDark === null) return null // avoid hydration mismatch
+  const isDark = resolvedTheme === "dark"
 
   return (
     <button
-      onClick={toggle}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="flex items-center justify-center h-8 w-8 rounded-full text-[#536471] dark:text-[#71767b] hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors"
+      className="flex items-center justify-center h-8 w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors"
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
@@ -211,19 +202,19 @@ export function BriefingView() {
       : `${Math.floor(minutesAgo / 1440)}d ago`
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D1117]">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/95 dark:bg-[#0D1117]/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-[598px] mx-auto">
           <div className="flex items-center justify-between px-4 h-[53px]">
             {/* Logo + timestamp */}
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
+              <h1 className="text-xl font-bold text-foreground tracking-tight">
                 𝕏 Brief
               </h1>
               {briefing && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[13px] text-[#536471] dark:text-[#71767b]">
+                  <span className="text-[13px] text-muted-foreground">
                     Updated {relativeTime}
                   </span>
                   {isStale && (
@@ -246,7 +237,7 @@ export function BriefingView() {
                   onClick={() => fetchBriefing(true)}
                   disabled={refreshing}
                   aria-label="Refresh briefing"
-                  className="flex items-center justify-center h-8 w-8 rounded-full text-[#536471] dark:text-[#71767b] hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center h-8 w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors disabled:opacity-50"
                 >
                   <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
                 </button>
@@ -269,14 +260,14 @@ export function BriefingView() {
           className="w-full"
         >
           {/* Tab navigation */}
-          <div className="sticky top-[53px] z-40 bg-white/95 dark:bg-[#0D1117]/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
+          <div className="sticky top-[53px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
             <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
               <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
                 {availableTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-[#536471] dark:text-[#71767b] hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] data-[state=active]:text-[#0f1419] dark:data-[state=active]:text-[#e7e9ea] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-[3px] after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
+                    className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-muted-foreground hover:bg-accent/30 data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-[3px] after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                   >
                     <span className="text-[15px] whitespace-nowrap">
                       {tab.label}
@@ -291,7 +282,7 @@ export function BriefingView() {
           </div>
 
           {/* Tab content */}
-          <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] min-h-screen">
+          <div className="max-w-[598px] mx-auto border-x border-border min-h-screen">
             {availableTabs.map((tab) => (
               <TabsContent
                 key={tab.id}
@@ -302,7 +293,7 @@ export function BriefingView() {
                   {tab.posts.map((post, index) => (
                     <div
                       key={`${post.authorUsername}-${index}`}
-                      className="px-4 py-3 border-b border-[#eff3f4] dark:border-[#2f3336] cursor-pointer hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+                      className="px-4 py-3 border-b border-border cursor-pointer hover:bg-accent/30 transition-colors"
                       onClick={() => {
                         if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
                       }}
@@ -319,11 +310,11 @@ export function BriefingView() {
 
       {/* No briefing yet */}
       {!loading && (!briefing || availableTabs.length === 0) && (
-        <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] px-4 text-center py-20">
-          <p className="text-[15px] text-[#536471] dark:text-[#71767b]">
+        <div className="max-w-[598px] mx-auto border-x border-border px-4 text-center py-20">
+          <p className="text-[15px] text-muted-foreground">
             No briefing available yet.
           </p>
-          <p className="text-[13px] text-[#536471] dark:text-[#71767b] mt-2">
+          <p className="text-[13px] text-muted-foreground mt-2">
             Run the pipeline to generate your first briefing.
           </p>
         </div>
@@ -331,12 +322,12 @@ export function BriefingView() {
 
       {/* Footer */}
       {!loading && briefing && (
-        <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] px-4 py-6 border-t border-t-[#eff3f4] dark:border-t-[#2f3336]">
-          <p className="text-center text-[13px] text-[#536471] dark:text-[#71767b]">
+        <div className="max-w-[598px] mx-auto border-x border-border px-4 py-6 border-t border-t-border">
+          <p className="text-center text-[13px] text-muted-foreground">
             Scanned {formatStat(briefing.stats.posts_scanned)} posts from{" "}
             {briefing.stats.accounts_tracked} accounts
           </p>
-          <p className="text-center text-[12px] text-[#536471] dark:text-[#71767b] mt-1 opacity-70">
+          <p className="text-center text-[12px] text-muted-foreground mt-1 opacity-70">
             Last updated {formatLastUpdated(briefing.generated_at)}
           </p>
         </div>

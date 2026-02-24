@@ -146,13 +146,13 @@ function LinkCard({ url }: { url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-3 flex items-center gap-2 border border-[#eff3f4] dark:border-[#2f3336] rounded-2xl px-3 py-2.5 transition-colors hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] bg-white dark:bg-black"
+      className="mt-3 flex items-center gap-2 border border-border rounded-2xl px-3 py-2.5 transition-colors hover:bg-accent/30 bg-background"
       onClick={(e) => e.stopPropagation()}
     >
-      <span className="text-[13px] text-[#536471] dark:text-[#71767b] truncate">
+      <span className="text-[13px] text-muted-foreground truncate">
         {domain}
       </span>
-      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-[#536471] dark:text-[#71767b]" />
+      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
     </a>
   )
 }
@@ -233,7 +233,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
 
   return (
     <div
-      className="mt-3 border border-[#eff3f4] dark:border-[#2f3336] rounded-2xl overflow-hidden cursor-pointer hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+      className="mt-3 border border-border rounded-2xl overflow-hidden cursor-pointer hover:bg-accent/30 transition-colors"
       onClick={(e) => {
         e.stopPropagation()
         if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
@@ -246,21 +246,21 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
             {post.authorAvatarUrl && (
               <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
             )}
-            <AvatarFallback className="bg-[#eff3f4] dark:bg-[#2f3336] text-[10px] font-medium">
+            <AvatarFallback className="bg-accent text-[10px] font-medium">
               {post.authorName?.[0]?.toUpperCase() || "?"}
             </AvatarFallback>
           </Avatar>
-          <span className="font-bold text-[13px] text-[#0f1419] dark:text-[#e7e9ea] leading-4">
+          <span className="font-bold text-[13px] text-foreground leading-4">
             {post.authorName}
           </span>
           {post.verified && <VerificationBadge type={post.verified} size={14} />}
-          <span className="text-[13px] text-[#536471] dark:text-[#71767b] leading-4">
+          <span className="text-[13px] text-muted-foreground leading-4">
             @{post.authorUsername}
           </span>
           {(post.createdAt || post.timestamp) && (
             <>
-              <span className="text-[#536471] dark:text-[#71767b] text-[13px]">·</span>
-              <span className="text-[13px] text-[#536471] dark:text-[#71767b] leading-4">
+              <span className="text-muted-foreground text-[13px]">·</span>
+              <span className="text-[13px] text-muted-foreground leading-4">
                 {formatTimestamp(post.createdAt, post.timestamp)}
               </span>
             </>
@@ -268,7 +268,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
         </div>
 
         {/* Text */}
-        <p className="mt-1 text-[15px] leading-5 text-[#0f1419] dark:text-[#e7e9ea] whitespace-pre-wrap break-words">
+        <p className="mt-1 text-[15px] leading-5 text-foreground whitespace-pre-wrap break-words">
           <RichText text={displayText} hideUrls />
           {isLong && !expanded && (
             <button
@@ -291,7 +291,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
         <img
           src={post.media[0].url}
           alt={post.media[0].alt_text || "Image"}
-          className="w-full max-h-[200px] object-cover border-t border-[#eff3f4] dark:border-[#2f3336]"
+          className="w-full max-h-[200px] object-cover border-t border-border"
         />
       )}
     </div>
@@ -386,7 +386,7 @@ export function PostCard({
           {authorAvatarUrl && (
             <AvatarImage src={authorAvatarUrl} alt={authorName} />
           )}
-          <AvatarFallback className="bg-[#eff3f4] dark:bg-[#2f3336] text-[#536471] dark:text-[#71767b] text-sm font-medium">
+          <AvatarFallback className="bg-accent text-muted-foreground text-sm font-medium">
             {initials}
           </AvatarFallback>
         </Avatar>
@@ -396,20 +396,20 @@ export function PostCard({
       <div className="flex-1 min-w-0">
         {/* Author info — single line like X */}
         <div className="flex items-center gap-1 min-w-0">
-          <span className="font-bold text-[15px] leading-5 text-[#0f1419] dark:text-[#e7e9ea] truncate">
+          <span className="font-bold text-[15px] leading-5 text-foreground truncate">
             {authorName}
           </span>
 
           {verified && <VerificationBadge type={verified} />}
 
-          <span className="text-[15px] leading-5 text-[#536471] dark:text-[#71767b] truncate flex-shrink-[2]">
+          <span className="text-[15px] leading-5 text-muted-foreground truncate flex-shrink-[2]">
             @{authorUsername}
           </span>
 
           {displayTime && (
             <>
-              <span className="text-[#536471] dark:text-[#71767b] flex-shrink-0">·</span>
-              <span className="text-[15px] leading-5 text-[#536471] dark:text-[#71767b] flex-shrink-0">
+              <span className="text-muted-foreground flex-shrink-0">·</span>
+              <span className="text-[15px] leading-5 text-muted-foreground flex-shrink-0">
                 {displayTime}
               </span>
             </>
@@ -418,7 +418,7 @@ export function PostCard({
 
         {/* Post text with rich parsing */}
         <div className="mt-0.5">
-          <p className="text-[15px] leading-[20px] text-[#0f1419] dark:text-[#e7e9ea] whitespace-pre-wrap break-words">
+          <p className="text-[15px] leading-[20px] text-foreground whitespace-pre-wrap break-words">
             <RichText text={displayText} hideUrls />
             {isLongText && !textExpanded && (
               <button
@@ -445,12 +445,12 @@ export function PostCard({
           <div
             className={`mt-3 ${
               media.length === 1 ? "" : "grid grid-cols-2 gap-0.5"
-            } rounded-2xl overflow-hidden border border-[#eff3f4] dark:border-[#2f3336]`}
+            } rounded-2xl overflow-hidden border border-border`}
           >
             {media.map((item, index) => (
               <div
                 key={index}
-                className={`relative bg-[#eff3f4] dark:bg-[#2f3336] ${
+                className={`relative bg-accent ${
                   media.length === 1
                     ? "aspect-video max-h-[500px]"
                     : "aspect-square"
@@ -516,7 +516,7 @@ export function PostCard({
         {metrics && (
           <div className="mt-1 flex items-center justify-between -ml-2">
             {/* Replies */}
-            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+            <div className="flex items-center gap-1 text-muted-foreground p-2">
               <MessageCircle className="h-[18.75px] w-[18.75px]" />
               {(metrics.replies ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
@@ -526,7 +526,7 @@ export function PostCard({
             </div>
 
             {/* Reposts */}
-            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+            <div className="flex items-center gap-1 text-muted-foreground p-2">
               <Repeat2 className="h-[18.75px] w-[18.75px]" />
               {(metrics.reposts ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
@@ -536,7 +536,7 @@ export function PostCard({
             </div>
 
             {/* Likes */}
-            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+            <div className="flex items-center gap-1 text-muted-foreground p-2">
               <Heart className="h-[18.75px] w-[18.75px]" />
               {(metrics.likes ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
@@ -546,7 +546,7 @@ export function PostCard({
             </div>
 
             {/* Views */}
-            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+            <div className="flex items-center gap-1 text-muted-foreground p-2">
               <Eye className="h-[18.75px] w-[18.75px]" />
               {(metrics.views ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
@@ -556,7 +556,7 @@ export function PostCard({
             </div>
 
             {/* Bookmark */}
-            <div className="flex items-center gap-1 text-[#536471] dark:text-[#71767b] p-2">
+            <div className="flex items-center gap-1 text-muted-foreground p-2">
               <Bookmark className="h-[18.75px] w-[18.75px]" />
               {(metrics.bookmarks ?? 0) > 0 && (
                 <span className="text-[13px] leading-4">
@@ -566,7 +566,7 @@ export function PostCard({
             </div>
 
             {/* Share */}
-            <div className="flex items-center text-[#536471] dark:text-[#71767b] p-2">
+            <div className="flex items-center text-muted-foreground p-2">
               <Share className="h-[18.75px] w-[18.75px]" />
             </div>
           </div>
