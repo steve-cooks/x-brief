@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { PostCard } from "@/components/x-brief/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { RefreshCw, Sun, Moon, AlertTriangle } from "lucide-react"
 
 interface BriefingData {
   generated_at: string
@@ -57,9 +58,32 @@ interface BriefingData {
   }
 }
 
+// Map section titles → display info
+const SECTION_DISPLAY: Record<string, { label: string; id: string }> = {
+  "TOP STORIES": { label: "Top Stories", id: "top_stories" },
+  "TRENDING IN YOUR NICHES": { label: "Trending", id: "trending" },
+  "WORTH A LOOK": { label: "Picks", id: "worth_a_look" },
+  "VIRAL 🔥": { label: "Viral 🔥", id: "viral" },
+  "YOUR CIRCLE": { label: "Your Circle", id: "your_circle" },
+}
+
+// Preferred tab order
+const TAB_ORDER = ["top_stories", "viral", "your_circle", "trending", "worth_a_look"]
+
 function formatStat(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
   return num.toString()
+}
+
+function formatLastUpdated(generatedAt: string): string {
+  const date = new Date(generatedAt)
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  }) + " at " + date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  })
 }
 
 function LoadingSkeleton() {
@@ -72,143 +96,194 @@ function LoadingSkeleton() {
   )
 }
 
-// Fixed tab definitions — always show all 4 tabs
-const TABS = [
-  { id: "viral", label: "Viral", sectionTitle: "VIRAL \uD83D\uDD25" },
-  { id: "top_stories", label: "Top Stories", sectionTitle: "TOP STORIES" },
-  { id: "trending", label: "Trending", sectionTitle: "TRENDING IN YOUR NICHES" },
-  { id: "worth_a_look", label: "Picks", sectionTitle: "WORTH A LOOK" },
-] as const
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState<boolean | null>(null)
 
-type Post = BriefingData["sections"][number]["posts"][number]
+  useEffect(() => {
+    // Read initial state from html class
+    setIsDark(document.documentElement.classList.contains("dark"))
+  }, [])
 
-function getPostsForTab(briefing: BriefingData, tabId: string): Post[] {
-  const tab = TABS.find((t) => t.id === tabId)
-  if (!tab) return []
-
-  // Find the matching section by title
-  const section = briefing.sections.find((s) => s.title === tab.sectionTitle)
-  if (section) return section.posts
-
-  // Fallback: also check for YOUR CIRCLE section posts in top_stories tab
-  if (tabId === "top_stories") {
-    const circle = briefing.sections.find((s) => s.title === "YOUR CIRCLE")
-    if (circle) return circle.posts
+  const toggle = () => {
+    const next = !isDark
+    setIsDark(next)
+    if (next) {
+      document.documentElement.classList.add("dark")
+      localStorage.setItem("theme", "dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+      localStorage.setItem("theme", "light")
+    }
   }
 
-  return []
+  if (isDark === null) return null // avoid hydration mismatch
+
+  return (
+    <button
+      onClick={toggle}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      className="flex items-center justify-center h-8 w-8 rounded-full text-[#536471] dark:text-[#71767b] hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors"
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  )
 }
 
 export function BriefingView() {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [minutesAgo, setMinutesAgo] = useState<number>(0)
+  const [activeTab, setActiveTab] = useState<string>("")
 
-  // Fetch briefing data
-  const fetchBriefing = async () => {
+  // Derive tabs from actual briefing data — only sections that have posts
+  const availableTabs = briefing
+    ? briefing.sections
+        .filter((s) => s.posts.length > 0 && SECTION_DISPLAY[s.title])
+        .map((s) => ({
+          ...SECTION_DISPLAY[s.title],
+          posts: s.posts,
+          count: s.posts.length,
+        }))
+        .sort((a, b) => {
+          const ai = TAB_ORDER.indexOf(a.id)
+          const bi = TAB_ORDER.indexOf(b.id)
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+        })
+    : []
+
+  // Set default active tab when briefing loads
+  useEffect(() => {
+    if (availableTabs.length > 0 && !activeTab) {
+      setActiveTab(availableTabs[0].id)
+    }
+  }, [availableTabs.length, activeTab])
+
+  const fetchBriefing = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setRefreshing(true)
     try {
       const response = await fetch("/api/briefing")
       const data = await response.json()
-
-      // Only update if data changed (compare generated_at timestamp)
       if (!briefing || data.generated_at !== briefing.generated_at) {
         setBriefing(data)
       }
-
       setLoading(false)
     } catch (error) {
       console.error("Failed to fetch briefing:", error)
       setLoading(false)
+    } finally {
+      if (showRefreshing) setRefreshing(false)
     }
-  }
+  }, [briefing])
 
   // Initial fetch
   useEffect(() => {
     fetchBriefing()
   }, [])
 
-  // Poll for updates every 5 minutes
+  // Poll every 5 minutes
   useEffect(() => {
-    const pollInterval = setInterval(() => {
-      fetchBriefing()
-    }, 5 * 60 * 1000) // 5 minutes
+    const interval = setInterval(() => fetchBriefing(), 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [fetchBriefing])
 
-    return () => clearInterval(pollInterval)
-  }, [briefing])
-
-  // Update "X minutes ago" based on generated_at (data freshness, not page load)
+  // Update "X ago" every minute
   useEffect(() => {
     if (!briefing?.generated_at) return
-
-    const updateMinutes = () => {
-      const now = new Date()
-      const generatedAt = new Date(briefing.generated_at)
-      const diff = Math.floor((now.getTime() - generatedAt.getTime()) / 60000)
+    const update = () => {
+      const diff = Math.floor((Date.now() - new Date(briefing.generated_at).getTime()) / 60000)
       setMinutesAgo(diff)
     }
-
-    updateMinutes()
-    const minuteInterval = setInterval(updateMinutes, 60000) // Update every minute
-
-    return () => clearInterval(minuteInterval)
+    update()
+    const interval = setInterval(update, 60000)
+    return () => clearInterval(interval)
   }, [briefing?.generated_at])
 
-  const generatedDate = briefing
-    ? new Date(briefing.generated_at).toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-      })
-    : ""
+  const isStale = minutesAgo > 720 // 12 hours
+
+  const relativeTime =
+    minutesAgo < 1
+      ? "just now"
+      : minutesAgo < 60
+      ? `${minutesAgo}m ago`
+      : minutesAgo < 1440
+      ? `${Math.floor(minutesAgo / 60)}h ago`
+      : `${Math.floor(minutesAgo / 1440)}d ago`
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      {/* Header - Fixed like X */}
-      <header className="sticky top-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
+    <div className="min-h-screen bg-white dark:bg-[#0D1117]">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/95 dark:bg-[#0D1117]/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
         <div className="max-w-[598px] mx-auto">
           <div className="flex items-center justify-between px-4 h-[53px]">
-            <h1 className="text-xl font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
-              𝕏 Brief
-            </h1>
-            {briefing && (
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] text-[#536471] dark:text-[#71767b]">
-                  {minutesAgo < 1
-                    ? "Updated just now"
-                    : minutesAgo < 60
-                    ? `Updated ${minutesAgo}m ago`
-                    : minutesAgo < 1440
-                    ? `Updated ${Math.floor(minutesAgo / 60)}h ago`
-                    : `Updated ${Math.floor(minutesAgo / 1440)}d ago`}
-                </span>
-                {minutesAgo > 240 && (
+            {/* Logo + timestamp */}
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
+                𝕏 Brief
+              </h1>
+              {briefing && (
+                <div className="flex items-center gap-1.5">
                   <span className="text-[13px] text-[#536471] dark:text-[#71767b]">
-                    · Data may be stale
+                    Updated {relativeTime}
                   </span>
-                )}
-              </div>
-            )}
+                  {isStale && (
+                    <span
+                      title="Data may be stale — last update was over 12 hours ago"
+                      className="flex items-center gap-0.5 text-[12px] text-amber-500 dark:text-amber-400"
+                    >
+                      <AlertTriangle className="h-3 w-3" />
+                      Stale
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1">
+              {briefing && (
+                <button
+                  onClick={() => fetchBriefing(true)}
+                  disabled={refreshing}
+                  aria-label="Refresh briefing"
+                  className="flex items-center justify-center h-8 w-8 rounded-full text-[#536471] dark:text-[#71767b] hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                </button>
+              )}
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Loading state */}
+      {/* Loading */}
       {loading && <LoadingSkeleton />}
 
-      {/* Main content with tabs */}
-      {!loading && briefing && (
-        <Tabs key={briefing.generated_at} defaultValue="viral" className="w-full">
-          {/* Tab navigation - X style */}
-          <div className="sticky top-[53px] z-40 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
+      {/* Main content */}
+      {!loading && briefing && availableTabs.length > 0 && (
+        <Tabs
+          key={briefing.generated_at}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
+          {/* Tab navigation */}
+          <div className="sticky top-[53px] z-40 bg-white/95 dark:bg-[#0D1117]/95 backdrop-blur-md border-b border-[#eff3f4] dark:border-[#2f3336]">
             <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
               <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
-                {TABS.map((tab) => (
+                {availableTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="relative flex-1 py-4 rounded-none border-0 bg-transparent text-[15px] font-medium text-[#536471] dark:text-[#71767b] hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] data-[state=active]:text-[#0f1419] dark:data-[state=active]:text-[#e7e9ea] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-[3px] after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
+                    className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-[#536471] dark:text-[#71767b] hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] data-[state=active]:text-[#0f1419] dark:data-[state=active]:text-[#e7e9ea] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-[3px] after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                   >
-                    <span className="text-[15px]">{tab.label}</span>
+                    <span className="text-[15px] whitespace-nowrap">
+                      {tab.label}
+                      <span className="ml-1.5 text-[12px] font-normal opacity-60">
+                        {tab.count}
+                      </span>
+                    </span>
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -217,56 +292,33 @@ export function BriefingView() {
 
           {/* Tab content */}
           <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] min-h-screen">
-            {TABS.map((tab) => {
-              const posts = getPostsForTab(briefing, tab.id)
-              const isViral = tab.id === "viral"
-              return (
-                <TabsContent
-                  key={tab.id}
-                  value={tab.id}
-                  className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
-                >
-                  {/* Posts feed */}
-                  {posts.length > 0 && (
-                    <div>
-                      {posts.map((post, index) => (
-                        <div
-                          key={`${post.authorUsername}-${index}`}
-                          className="px-4 py-3 border-b border-[#eff3f4] dark:border-[#2f3336] transition-colors cursor-pointer hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)]"
-                          onClick={() => {
-                            if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
-                          }}
-                        >
-                          {isViral && (
-                            <div className="flex items-center gap-1 mb-1">
-                              <span className="text-[13px] font-bold text-[#536471] dark:text-[#71767b]">
-                                🔥 Viral
-                              </span>
-                            </div>
-                          )}
-                          <PostCard {...post} />
-                        </div>
-                      ))}
+            {availableTabs.map((tab) => (
+              <TabsContent
+                key={tab.id}
+                value={tab.id}
+                className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
+              >
+                <div>
+                  {tab.posts.map((post, index) => (
+                    <div
+                      key={`${post.authorUsername}-${index}`}
+                      className="px-4 py-3 border-b border-[#eff3f4] dark:border-[#2f3336] cursor-pointer hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+                      onClick={() => {
+                        if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
+                      }}
+                    >
+                      <PostCard {...post} />
                     </div>
-                  )}
-
-                  {/* Empty state */}
-                  {posts.length === 0 && (
-                    <div className="text-center py-20">
-                      <p className="text-[15px] text-[#536471] dark:text-[#71767b]">
-                        No posts in this category
-                      </p>
-                    </div>
-                  )}
-                </TabsContent>
-              )
-            })}
+                  ))}
+                </div>
+              </TabsContent>
+            ))}
           </div>
         </Tabs>
       )}
 
-      {/* Empty state - no briefing */}
-      {!loading && !briefing && (
+      {/* No briefing yet */}
+      {!loading && (!briefing || availableTabs.length === 0) && (
         <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] px-4 text-center py-20">
           <p className="text-[15px] text-[#536471] dark:text-[#71767b]">
             No briefing available yet.
@@ -277,21 +329,15 @@ export function BriefingView() {
         </div>
       )}
 
-      {/* Footer — subtle single line */}
+      {/* Footer */}
       {!loading && briefing && (
-        <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] px-4 py-6">
+        <div className="max-w-[598px] mx-auto border-x border-[#eff3f4] dark:border-[#2f3336] px-4 py-6 border-t border-t-[#eff3f4] dark:border-t-[#2f3336]">
           <p className="text-center text-[13px] text-[#536471] dark:text-[#71767b]">
             Scanned {formatStat(briefing.stats.posts_scanned)} posts from{" "}
-            {briefing.stats.accounts_tracked} accounts · Generated{" "}
-            {new Date(briefing.generated_at).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}{" "}
-            at{" "}
-            {new Date(briefing.generated_at).toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-            })}
+            {briefing.stats.accounts_tracked} accounts
+          </p>
+          <p className="text-center text-[12px] text-[#536471] dark:text-[#71767b] mt-1 opacity-70">
+            Last updated {formatLastUpdated(briefing.generated_at)}
           </p>
         </div>
       )}

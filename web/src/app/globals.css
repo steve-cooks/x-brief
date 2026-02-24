@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* Class-based dark mode — supports both system preference and manual toggle */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -105,26 +106,25 @@
   --sidebar-ring: 29 155 240;
 }
 
-/* Dark Mode - X/Twitter exact dark palette */
-@media (prefers-color-scheme: dark) {
-  :root {
-  --background: 0 0 0;                 /* #000000 - X dark bg */
+/* Dark Mode CSS variables — applied via .dark class on <html> */
+.dark {
+  --background: 13 17 23;              /* #0D1117 - GitHub-style dark */
   --foreground: 231 233 234;           /* #e7e9ea - X dark primary text */
   
-  --card: 22 24 28;
+  --card: 22 27 34;                    /* #16181b slightly elevated */
   --card-foreground: 231 233 234;
   
-  --popover: 22 24 28;
+  --popover: 22 27 34;
   --popover-foreground: 231 233 234;
   
   /* X Blue */
   --primary: 29 155 240;               /* #1d9bf0 */
   --primary-foreground: 255 255 255;
   
-  --secondary: 22 24 28;
+  --secondary: 22 27 34;
   --secondary-foreground: 231 233 234;
   
-  --muted: 22 24 28;
+  --muted: 22 27 34;
   --muted-foreground: 113 118 123;     /* #71767b - X dark secondary text */
   
   --accent: 47 51 54;                  /* #2f3336 - X dark border */
@@ -144,7 +144,7 @@
   --chart-5: 120 86 255;
   
   /* Sidebar */
-  --sidebar: 0 0 0;
+  --sidebar: 13 17 23;
   --sidebar-foreground: 231 233 234;
   --sidebar-primary: 29 155 240;
   --sidebar-primary-foreground: 255 255 255;
@@ -152,7 +152,6 @@
   --sidebar-accent-foreground: 231 233 234;
   --sidebar-border: 47 51 54;
   --sidebar-ring: 29 155 240;
-  }
 }
 
 @layer base {
