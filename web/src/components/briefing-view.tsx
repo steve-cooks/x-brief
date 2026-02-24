@@ -49,6 +49,13 @@ interface BriefingData {
         timestamp?: string
         createdAt?: string
       }
+      linkCard?: {
+        title: string
+        description?: string
+        thumbnail?: string | null
+        domain?: string
+        url?: string
+      }
     }>
   }>
   stats: {

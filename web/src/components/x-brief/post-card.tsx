@@ -8,16 +8,17 @@ import {
   MessageCircle,
   Bookmark,
   Share,
+  Play,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState, useMemo, Fragment, type ReactNode } from "react"
+import { useState, useRef, useMemo, Fragment, type ReactNode } from "react"
 
-/** Proxy Twitter video/image URLs through our API to avoid referer blocking */
+/** Proxy Twitter media URLs through our API to avoid referer blocking */
 function proxyUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined
   if (
     url.includes("video.twimg.com") ||
-    (url.includes("pbs.twimg.com") && url.includes("video"))
+    url.includes("pbs.twimg.com")
   ) {
     return `/api/media?url=${encodeURIComponent(url)}`
   }
@@ -43,13 +44,11 @@ function parsePostText(raw: string): TextSegment[] {
   let match: RegExpExecArray | null
 
   while ((match = SEGMENT_RE.exec(raw)) !== null) {
-    // push preceding plain text
     if (match.index > lastIndex) {
       segments.push({ type: "text", value: raw.slice(lastIndex, match.index) })
     }
 
     if (match[1]) {
-      // @mention
       const username = match[1].slice(1)
       segments.push({
         type: "mention",
@@ -57,7 +56,6 @@ function parsePostText(raw: string): TextSegment[] {
         href: `https://x.com/${username}`,
       })
     } else if (match[2]) {
-      // #hashtag
       const tag = match[2].slice(1)
       segments.push({
         type: "hashtag",
@@ -65,18 +63,19 @@ function parsePostText(raw: string): TextSegment[] {
         href: `https://x.com/hashtag/${tag}`,
       })
     } else if (match[3]) {
-      // URL
-      const url = match[3].replace(/[.,;:!?)]+$/, "") // strip trailing punctuation
+      const url = match[3].replace(/[.,;:!?)]+$/, "")
       const display = url
         .replace(/^https?:\/\//, "")
         .replace(/^www\./, "")
         .slice(0, 35)
       segments.push({
         type: "url",
-        value: display.length < url.replace(/^https?:\/\//, "").length ? display + "…" : display,
+        value:
+          display.length < url.replace(/^https?:\/\//, "").length
+            ? display + "…"
+            : display,
         href: url,
       })
-      // adjust lastIndex if we stripped chars
       const stripped = match[3].length - url.length
       if (stripped > 0) {
         SEGMENT_RE.lastIndex -= stripped
@@ -86,7 +85,6 @@ function parsePostText(raw: string): TextSegment[] {
     lastIndex = SEGMENT_RE.lastIndex
   }
 
-  // trailing plain text
   if (lastIndex < raw.length) {
     segments.push({ type: "text", value: raw.slice(lastIndex) })
   }
@@ -94,13 +92,19 @@ function parsePostText(raw: string): TextSegment[] {
   return segments
 }
 
-function RichText({ text, hideUrls = false }: { text: string; hideUrls?: boolean }) {
+function RichText({
+  text,
+  hideUrls = false,
+}: {
+  text: string
+  hideUrls?: boolean
+}) {
   const segments = useMemo(() => parsePostText(text), [text])
   return (
     <>
       {segments.map((seg, i) => {
-        if (seg.type === "text") return <Fragment key={i}>{seg.value}</Fragment>
-        // Hide URL segments when hideUrls is true (link card will show instead)
+        if (seg.type === "text")
+          return <Fragment key={i}>{seg.value}</Fragment>
         if (seg.type === "url" && hideUrls) return null
         return (
           <a
@@ -120,44 +124,6 @@ function RichText({ text, hideUrls = false }: { text: string; hideUrls?: boolean
 }
 
 // ---------------------------------------------------------------------------
-// LinkCard — X-style link preview below post text
-// ---------------------------------------------------------------------------
-
-function extractFirstUrl(segments: TextSegment[]): string | null {
-  for (const seg of segments) {
-    if (seg.type === "url" && seg.href) return seg.href
-  }
-  return null
-}
-
-function getDomain(url: string): string {
-  try {
-    const u = new URL(url)
-    return u.hostname.replace(/^www\./, "")
-  } catch {
-    return url.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]
-  }
-}
-
-function LinkCard({ url }: { url: string }) {
-  const domain = getDomain(url)
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="mt-3 flex items-center gap-2 border border-border rounded-2xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.03] bg-background"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <span className="text-[13px] text-muted-foreground truncate">
-        {domain}
-      </span>
-      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-    </a>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // X-style timestamp formatting
 // ---------------------------------------------------------------------------
 
@@ -173,7 +139,6 @@ function formatTimestamp(createdAt?: string, fallback?: string): string {
   const diffH = Math.floor(diffMin / 60)
   if (diffH < 24) return `${diffH}h`
 
-  // >24 h → "Feb 17" style
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
@@ -208,6 +173,335 @@ interface MediaItem {
 }
 
 // ---------------------------------------------------------------------------
+// LinkCard data (from enrichment)
+// ---------------------------------------------------------------------------
+
+interface LinkCardData {
+  title: string
+  description?: string
+  thumbnail?: string | null
+  domain?: string
+  url?: string
+}
+
+// ---------------------------------------------------------------------------
+// LinkCard — X-style link preview (enriched version with thumbnail)
+// ---------------------------------------------------------------------------
+
+function EnrichedLinkCard({ card }: { card: LinkCardData }) {
+  const domain = card.domain || ""
+
+  return (
+    <a
+      href={card.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 block border border-border rounded-2xl overflow-hidden transition-colors hover:bg-foreground/[0.03] bg-background"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Large thumbnail on top */}
+      {card.thumbnail && (
+        <div className="relative aspect-[1.91/1] bg-accent overflow-hidden">
+          <img
+            src={proxyUrl(card.thumbnail)}
+            alt={card.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+      {/* Title + domain below */}
+      <div className="px-3 py-2.5">
+        <div className="text-[13px] text-muted-foreground truncate">
+          {domain}
+        </div>
+        <div className="text-[15px] text-foreground leading-5 line-clamp-2 mt-0.5">
+          {card.title}
+        </div>
+        {card.description && !card.thumbnail && (
+          <div className="text-[13px] text-muted-foreground line-clamp-2 mt-0.5">
+            {card.description}
+          </div>
+        )}
+      </div>
+    </a>
+  )
+}
+
+/** Fallback: simple URL-only link card (no enrichment data) */
+function SimpleLinkCard({ url }: { url: string }) {
+  const domain = (() => {
+    try {
+      const u = new URL(url)
+      return u.hostname.replace(/^www\./, "")
+    } catch {
+      return url.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]
+    }
+  })()
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-3 flex items-center gap-2 border border-border rounded-2xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.03] bg-background"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="text-[13px] text-muted-foreground truncate">
+        {domain}
+      </span>
+      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+    </a>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Media Grid — handles 1-4 images in X's layout
+// ---------------------------------------------------------------------------
+
+function MediaGrid({
+  media,
+  onImageClick,
+}: {
+  media: MediaItem[]
+  onImageClick?: (url: string) => void
+}) {
+  const count = media.length
+
+  if (count === 0) return null
+
+  if (count === 1) {
+    return (
+      <SingleMedia item={media[0]} onImageClick={onImageClick} />
+    )
+  }
+
+  if (count === 2) {
+    return (
+      <div className="mt-3 grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border">
+        {media.map((item, i) => (
+          <div key={i} className="relative aspect-square bg-accent overflow-hidden">
+            <MediaContent item={item} fill onImageClick={onImageClick} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (count === 3) {
+    return (
+      <div className="mt-3 grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
+        <div className="relative row-span-2 bg-accent overflow-hidden">
+          <MediaContent item={media[0]} fill onImageClick={onImageClick} />
+        </div>
+        <div className="relative bg-accent overflow-hidden">
+          <MediaContent item={media[1]} fill onImageClick={onImageClick} />
+        </div>
+        <div className="relative bg-accent overflow-hidden">
+          <MediaContent item={media[2]} fill onImageClick={onImageClick} />
+        </div>
+      </div>
+    )
+  }
+
+  // 4+
+  return (
+    <div className="mt-3 grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
+      {media.slice(0, 4).map((item, i) => (
+        <div key={i} className="relative bg-accent overflow-hidden">
+          <MediaContent item={item} fill onImageClick={onImageClick} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Single media item (full width) */
+function SingleMedia({
+  item,
+  onImageClick,
+}: {
+  item: MediaItem
+  onImageClick?: (url: string) => void
+}) {
+  if (item.type === "photo" && item.url) {
+    return (
+      <div className="mt-3 rounded-2xl overflow-hidden border border-border">
+        <img
+          src={proxyUrl(item.url)}
+          alt={item.alt_text || "Image"}
+          className="w-full max-h-[510px] object-cover cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation()
+            onImageClick?.(item.url!)
+          }}
+        />
+      </div>
+    )
+  }
+
+  if (item.type === "video") {
+    return (
+      <div className="mt-3 rounded-2xl overflow-hidden border border-border">
+        <VideoPlayer item={item} />
+      </div>
+    )
+  }
+
+  if (item.type === "animated_gif") {
+    return (
+      <div className="mt-3 rounded-2xl overflow-hidden border border-border">
+        <GifPlayer item={item} />
+      </div>
+    )
+  }
+
+  return null
+}
+
+/** Renders a media item inside a grid cell */
+function MediaContent({
+  item,
+  fill,
+  onImageClick,
+}: {
+  item: MediaItem
+  fill?: boolean
+  onImageClick?: (url: string) => void
+}) {
+  if (item.type === "photo" && item.url) {
+    return (
+      <img
+        src={proxyUrl(item.url)}
+        alt={item.alt_text || "Image"}
+        className="w-full h-full object-cover cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation()
+          onImageClick?.(item.url!)
+        }}
+      />
+    )
+  }
+
+  if (item.type === "video") {
+    return <VideoPlayer item={item} fill />
+  }
+
+  if (item.type === "animated_gif") {
+    return <GifPlayer item={item} fill />
+  }
+
+  return null
+}
+
+/** Video player with poster + play button overlay */
+function VideoPlayer({ item, fill }: { item: MediaItem; fill?: boolean }) {
+  const [playing, setPlaying] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const posterUrl = proxyUrl(item.preview_image_url || item.url)
+  const videoUrl = proxyUrl(item.video_url)
+
+  if (!videoUrl) {
+    // No video URL — show poster only
+    return posterUrl ? (
+      <img
+        src={posterUrl}
+        alt="Video"
+        className={fill ? "w-full h-full object-cover" : "w-full max-h-[510px] object-cover"}
+      />
+    ) : null
+  }
+
+  if (!playing) {
+    return (
+      <div
+        className={`relative cursor-pointer ${fill ? "w-full h-full" : ""}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          setPlaying(true)
+        }}
+      >
+        {posterUrl && (
+          <img
+            src={posterUrl}
+            alt="Video poster"
+            className={
+              fill
+                ? "w-full h-full object-cover"
+                : "w-full max-h-[510px] object-cover"
+            }
+          />
+        )}
+        {/* Play button overlay */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex items-center justify-center w-[60px] h-[60px] rounded-full bg-[#1d9bf0] shadow-lg">
+            <Play className="h-7 w-7 text-white fill-white ml-1" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <video
+      ref={videoRef}
+      src={videoUrl}
+      poster={posterUrl}
+      controls
+      autoPlay
+      playsInline
+      className={
+        fill
+          ? "w-full h-full object-cover"
+          : "w-full max-h-[510px] object-cover"
+      }
+      onClick={(e) => e.stopPropagation()}
+    />
+  )
+}
+
+/** GIF player — auto-loops, muted, no controls, with "GIF" badge */
+function GifPlayer({ item, fill }: { item: MediaItem; fill?: boolean }) {
+  const videoUrl = proxyUrl(item.video_url)
+  const posterUrl = proxyUrl(item.preview_image_url || item.url)
+
+  return (
+    <div className={`relative ${fill ? "w-full h-full" : ""}`}>
+      {videoUrl ? (
+        <video
+          src={videoUrl}
+          poster={posterUrl}
+          loop
+          autoPlay
+          muted
+          playsInline
+          className={
+            fill
+              ? "w-full h-full object-cover"
+              : "w-full max-h-[510px] object-cover"
+          }
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : posterUrl ? (
+        <img
+          src={posterUrl}
+          alt="GIF"
+          className={
+            fill
+              ? "w-full h-full object-cover"
+              : "w-full max-h-[510px] object-cover"
+          }
+        />
+      ) : null}
+      {/* GIF badge */}
+      <div className="absolute bottom-2 left-2 bg-foreground/80 text-background text-xs font-bold px-1.5 py-0.5 rounded">
+        GIF
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // QuotedPost (nested tweet card)
 // ---------------------------------------------------------------------------
 
@@ -227,16 +521,16 @@ interface QuotedPostData {
 function QuotedPost({ post }: { post: QuotedPostData }) {
   const [expanded, setExpanded] = useState(false)
   const isLong = post.text.length > 180
-  const displayText = !expanded && isLong ? post.text.slice(0, 180) + "…" : post.text
-  const quotedSegments = useMemo(() => parsePostText(displayText), [displayText])
-  const quotedFirstUrl = useMemo(() => extractFirstUrl(quotedSegments), [quotedSegments])
+  const displayText =
+    !expanded && isLong ? post.text.slice(0, 180) + "…" : post.text
 
   return (
     <div
       className="mt-3 border border-border rounded-2xl overflow-hidden cursor-pointer hover:bg-foreground/[0.03] transition-colors"
       onClick={(e) => {
         e.stopPropagation()
-        if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
+        if (post.postUrl)
+          window.open(post.postUrl, "_blank", "noopener,noreferrer")
       }}
     >
       <div className="px-3 py-2.5">
@@ -244,17 +538,22 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
         <div className="flex items-center gap-1.5">
           <Avatar className="h-5 w-5">
             {post.authorAvatarUrl && (
-              <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
+              <AvatarImage
+                src={proxyUrl(post.authorAvatarUrl)}
+                alt={post.authorName}
+              />
             )}
             <AvatarFallback className="bg-accent text-[10px] font-medium">
               {post.authorName?.[0]?.toUpperCase() || "?"}
             </AvatarFallback>
           </Avatar>
-          <span className="font-bold text-[13px] text-foreground leading-4">
+          <span className="font-bold text-[13px] text-foreground leading-4 truncate">
             {post.authorName}
           </span>
-          {post.verified && <VerificationBadge type={post.verified} size={14} />}
-          <span className="text-[13px] text-muted-foreground leading-4">
+          {post.verified && (
+            <VerificationBadge type={post.verified} size={14} />
+          )}
+          <span className="text-[13px] text-muted-foreground leading-4 truncate">
             @{post.authorUsername}
           </span>
           {(post.createdAt || post.timestamp) && (
@@ -269,7 +568,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
 
         {/* Text */}
         <p className="mt-1 text-[15px] leading-5 text-foreground whitespace-pre-wrap break-words">
-          <RichText text={displayText} hideUrls />
+          <RichText text={displayText} />
           {isLong && !expanded && (
             <button
               className="text-[#1d9bf0] hover:underline ml-1 text-[15px]"
@@ -282,18 +581,19 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
             </button>
           )}
         </p>
-        {/* Link card in quoted post */}
-        {quotedFirstUrl && <LinkCard url={quotedFirstUrl} />}
       </div>
 
-      {/* Quoted media (single image preview) */}
-      {post.media && post.media.length > 0 && post.media[0].type === "photo" && post.media[0].url && (
-        <img
-          src={post.media[0].url}
-          alt={post.media[0].alt_text || "Image"}
-          className="w-full max-h-[200px] object-cover border-t border-border"
-        />
-      )}
+      {/* Quoted media (single image preview only) */}
+      {post.media &&
+        post.media.length > 0 &&
+        post.media[0].type === "photo" &&
+        post.media[0].url && (
+          <img
+            src={proxyUrl(post.media[0].url)}
+            alt={post.media[0].alt_text || "Image"}
+            className="w-full max-h-[200px] object-cover border-t border-border"
+          />
+        )}
     </div>
   )
 }
@@ -302,7 +602,13 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
 // Verification badge
 // ---------------------------------------------------------------------------
 
-function VerificationBadge({ type, size = 18 }: { type: string; size?: number }) {
+function VerificationBadge({
+  type,
+  size = 18,
+}: {
+  type: string
+  size?: number
+}) {
   return (
     <svg
       viewBox="0 0 22 22"
@@ -316,8 +622,8 @@ function VerificationBadge({ type, size = 18 }: { type: string; size?: number })
           type === "business"
             ? "#E8A12E"
             : type === "government"
-            ? "#829AAB"
-            : "#1D9BF0"
+              ? "#829AAB"
+              : "#1D9BF0"
         }
       />
     </svg>
@@ -341,6 +647,7 @@ interface PostCardProps {
   createdAt?: string
   category?: string
   quotedPost?: QuotedPostData
+  linkCard?: LinkCardData
 }
 
 const TRUNCATE_LENGTH = 280
@@ -357,13 +664,15 @@ export function PostCard({
   timestamp,
   createdAt,
   quotedPost,
+  linkCard,
 }: PostCardProps) {
-  const [expandedMedia, setExpandedMedia] = useState<number | null>(null)
   const [textExpanded, setTextExpanded] = useState(false)
 
   const isLongText = text.length > TRUNCATE_LENGTH
   const displayText =
-    !textExpanded && isLongText ? text.slice(0, TRUNCATE_LENGTH) + "…" : text
+    !textExpanded && isLongText
+      ? text.slice(0, TRUNCATE_LENGTH) + "…"
+      : text
 
   const initials = authorName
     .split(" ")
@@ -374,9 +683,23 @@ export function PostCard({
 
   const displayTime = formatTimestamp(createdAt, timestamp)
 
-  // Extract first URL for link card
+  // Determine if we should hide URLs in text (when we have an enriched link card or media)
+  const hasLinkCard = !!linkCard
+  const hasMedia = media && media.length > 0
+
+  // Extract first URL for fallback link card (only if no enriched linkCard and no media)
   const textSegments = useMemo(() => parsePostText(displayText), [displayText])
-  const firstUrl = useMemo(() => extractFirstUrl(textSegments), [textSegments])
+  const firstUrl = useMemo(() => {
+    if (hasLinkCard || hasMedia) return null
+    for (const seg of textSegments) {
+      if (seg.type === "url" && seg.href) return seg.href
+    }
+    return null
+  }, [textSegments, hasLinkCard, hasMedia])
+
+  const handleImageClick = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer")
+  }
 
   return (
     <article className="flex gap-3 group min-h-[44px]">
@@ -384,7 +707,10 @@ export function PostCard({
       <div className="flex-shrink-0">
         <Avatar className="h-10 w-10">
           {authorAvatarUrl && (
-            <AvatarImage src={authorAvatarUrl} alt={authorName} />
+            <AvatarImage
+              src={proxyUrl(authorAvatarUrl)}
+              alt={authorName}
+            />
           )}
           <AvatarFallback className="bg-accent text-muted-foreground text-sm font-medium">
             {initials}
@@ -419,7 +745,7 @@ export function PostCard({
         {/* Post text with rich parsing */}
         <div className="mt-0.5">
           <p className="text-[15px] leading-[20px] text-foreground whitespace-pre-wrap break-words">
-            <RichText text={displayText} hideUrls />
+            <RichText text={displayText} hideUrls={hasLinkCard} />
             {isLongText && !textExpanded && (
               <button
                 className="text-[#1d9bf0] hover:underline ml-1 text-[15px]"
@@ -434,85 +760,21 @@ export function PostCard({
           </p>
         </div>
 
-        {/* Link card */}
-        {firstUrl && <LinkCard url={firstUrl} />}
+        {/* Media attachments */}
+        {hasMedia && (
+          <MediaGrid media={media!} onImageClick={handleImageClick} />
+        )}
+
+        {/* Enriched link card (from syndication API) */}
+        {hasLinkCard && <EnrichedLinkCard card={linkCard!} />}
+
+        {/* Fallback simple link card (URL-only, no enrichment data) */}
+        {firstUrl && !hasLinkCard && <SimpleLinkCard url={firstUrl} />}
 
         {/* Quoted post */}
         {quotedPost && <QuotedPost post={quotedPost} />}
 
-        {/* Media attachments */}
-        {media && media.length > 0 && (
-          <div
-            className={`mt-3 ${
-              media.length === 1 ? "" : "grid grid-cols-2 gap-0.5"
-            } rounded-2xl overflow-hidden border border-border`}
-          >
-            {media.map((item, index) => (
-              <div
-                key={index}
-                className={`relative bg-accent ${
-                  media.length === 1
-                    ? "aspect-video max-h-[500px]"
-                    : "aspect-square"
-                }`}
-              >
-                {item.type === "photo" && item.url && (
-                  <img
-                    src={item.url}
-                    alt={item.alt_text || "Image"}
-                    className="w-full h-full object-cover"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setExpandedMedia(expandedMedia === index ? null : index)
-                    }}
-                  />
-                )}
-
-                {item.type === "video" && item.video_url && (
-                  <video
-                    src={proxyUrl(item.video_url)}
-                    poster={proxyUrl(item.preview_image_url)}
-                    controls
-                    autoPlay
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover rounded-inherit"
-                    preload="auto"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                )}
-
-                {item.type === "animated_gif" && (
-                  <div className="relative w-full h-full">
-                    {item.video_url ? (
-                      <video
-                        src={proxyUrl(item.video_url)}
-                        poster={proxyUrl(item.preview_image_url)}
-                        loop
-                        autoPlay
-                        muted
-                        playsInline
-                        className="w-full h-full object-cover rounded-inherit"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    ) : item.preview_image_url ? (
-                      <img
-                        src={item.preview_image_url}
-                        alt="GIF"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : null}
-                    <div className="absolute bottom-2 left-2 bg-gray-900/80 text-white text-xs font-semibold px-2 py-1 rounded">
-                      GIF
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Engagement metrics — X layout: replies · reposts · likes · views · bookmark · share */}
+        {/* Engagement metrics — X layout */}
         {metrics && (
           <div className="mt-1 flex items-center justify-between -ml-2">
             {/* Replies — blue on hover */}

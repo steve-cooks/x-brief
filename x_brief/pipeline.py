@@ -117,6 +117,11 @@ async def run_briefing(config_path: str, hours: int = 24) -> str:
         with open(json_path, "w") as f:
             json_mod.dump(json_data, f, indent=2, default=str)
         print(f"📄 JSON exported to {json_path}")
+
+        # 9. Enrich with syndication API (rich media, quotes, link cards)
+        from x_brief.enrichment import enrich_with_syndication
+        print("🎨 Enriching with syndication API...")
+        enrich_with_syndication(json_path)
         
         return output
 
@@ -200,6 +205,11 @@ async def run_briefing_from_scans(
     with open(json_path, "w") as f:
         json.dump(json_data, f, indent=2, default=str)
     print(f"📄 JSON exported to {json_path}")
+
+    # 7.5. Enrich with syndication API (rich media, quotes, link cards)
+    from x_brief.enrichment import enrich_with_syndication
+    print("🎨 Enriching with syndication API...")
+    enrich_with_syndication(json_path)
     
     # 8. Save posts to brief history (only when dedup is active — i.e., morning brief)
     if not skip_dedup and history is not None:
