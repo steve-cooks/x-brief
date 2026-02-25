@@ -255,7 +255,8 @@
 
 /* Mobile overflow fix — outside @layer to beat Radix/Tailwind specificity */
 [data-slot="tabs"] {
-  overflow: hidden !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
   max-width: 100vw !important;
 }
 

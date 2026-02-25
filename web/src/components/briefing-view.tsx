@@ -265,7 +265,8 @@ export function BriefingView() {
             key={briefing.generated_at}
             value={activeTab}
             onValueChange={setActiveTab}
-            className="w-full"
+            className="w-full gap-0"
+            style={{ overflow: 'visible', gap: 0 }}
           >
             {/* Tab navigation */}
             <div className="sticky top-[53px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
