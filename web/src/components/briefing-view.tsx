@@ -260,16 +260,15 @@ export function BriefingView() {
 
       {/* Main content */}
       {!loading && briefing && availableTabs.length > 0 && (
-        <div className="w-full overflow-x-clip">
+        <div className="w-full" style={{ overflowX: 'clip' }}>
           <Tabs
             key={briefing.generated_at}
             value={activeTab}
             onValueChange={setActiveTab}
-            className="w-full gap-0"
-            style={{ overflow: 'visible', gap: 0 }}
+            className="w-full"
           >
             {/* Tab navigation */}
-            <div className="sticky top-[53px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
+            <div className="sticky top-[54px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
               <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
                 <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
                   {availableTabs.map((tab) => (

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 function Tabs({
   className,
   orientation = "horizontal",
+  style,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Root>) {
   return (
@@ -17,9 +18,10 @@ function Tabs({
       data-orientation={orientation}
       orientation={orientation}
       className={cn(
-        "group/tabs flex gap-0 data-[orientation=horizontal]:flex-col min-w-0 overflow-x-clip overflow-y-visible",
+        "group/tabs flex data-[orientation=horizontal]:flex-col min-w-0",
         className
       )}
+      style={{ gap: 0, overflowX: 'clip', overflowY: 'visible', ...style }}
       {...props}
     />
   )
