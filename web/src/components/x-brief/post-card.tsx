@@ -196,7 +196,7 @@ function EnrichedLinkCard({ card }: { card: LinkCardData }) {
       href={card.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-3 block border border-border rounded-2xl overflow-hidden transition-colors hover:bg-foreground/[0.03] bg-background"
+      className="mt-3 block border border-border rounded-2xl overflow-hidden transition-colors hover:bg-foreground/[0.03] bg-background max-w-full"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Large thumbnail on top */}
@@ -243,7 +243,7 @@ function SimpleLinkCard({ url }: { url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-3 flex items-center gap-2 border border-border rounded-2xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.03] bg-background"
+      className="mt-3 flex items-center gap-2 border border-border rounded-2xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.03] bg-background max-w-full overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
       <span className="text-[13px] text-muted-foreground truncate">
@@ -277,7 +277,7 @@ function MediaGrid({
 
   if (count === 2) {
     return (
-      <div className="mt-3 grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border">
+      <div className="mt-3 w-full max-w-full grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border">
         {media.map((item, i) => (
           <div key={i} className="relative aspect-square bg-accent overflow-hidden">
             <MediaContent item={item} fill onImageClick={onImageClick} />
@@ -289,7 +289,7 @@ function MediaGrid({
 
   if (count === 3) {
     return (
-      <div className="mt-3 grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
+      <div className="mt-3 w-full max-w-full grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
         <div className="relative row-span-2 bg-accent overflow-hidden">
           <MediaContent item={media[0]} fill onImageClick={onImageClick} />
         </div>
@@ -305,7 +305,7 @@ function MediaGrid({
 
   // 4+
   return (
-    <div className="mt-3 grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
+    <div className="mt-3 w-full max-w-full grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
       {media.slice(0, 4).map((item, i) => (
         <div key={i} className="relative bg-accent overflow-hidden">
           <MediaContent item={item} fill onImageClick={onImageClick} />
@@ -325,7 +325,7 @@ function SingleMedia({
 }) {
   if (item.type === "photo" && item.url) {
     return (
-      <div className="mt-3 rounded-2xl overflow-hidden border border-border">
+      <div className="mt-3 w-full max-w-full rounded-2xl overflow-hidden border border-border">
         <img
           src={proxyUrl(item.url)}
           alt={item.alt_text || "Image"}
@@ -341,7 +341,7 @@ function SingleMedia({
 
   if (item.type === "video") {
     return (
-      <div className="mt-3 rounded-2xl overflow-hidden border border-border">
+      <div className="mt-3 w-full max-w-full rounded-2xl overflow-hidden border border-border">
         <VideoPlayer item={item} />
       </div>
     )
@@ -349,7 +349,7 @@ function SingleMedia({
 
   if (item.type === "animated_gif") {
     return (
-      <div className="mt-3 rounded-2xl overflow-hidden border border-border">
+      <div className="mt-3 w-full max-w-full rounded-2xl overflow-hidden border border-border">
         <GifPlayer item={item} />
       </div>
     )
@@ -527,7 +527,7 @@ function QuotedPost({ post }: { post: QuotedPostData }) {
 
   return (
     <div
-      className="mt-3 border border-border rounded-2xl overflow-hidden cursor-pointer hover:bg-foreground/[0.03] transition-colors"
+      className="mt-3 border border-border rounded-2xl overflow-hidden cursor-pointer hover:bg-foreground/[0.03] transition-colors max-w-full"
       onClick={(e) => {
         e.stopPropagation()
         if (post.postUrl)
@@ -743,7 +743,7 @@ export function PostCard({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div className="w-0 flex-1 overflow-hidden">
         {/* Author info — single line like X */}
         <div className="flex items-center gap-1 min-w-0">
           <span className="font-bold text-[15px] leading-5 text-foreground truncate">
@@ -767,7 +767,7 @@ export function PostCard({
         </div>
 
         {/* Post text with rich parsing */}
-        <div className="mt-0.5">
+        <div className="mt-0.5 max-w-full">
           <p className="text-[15px] leading-[20px] text-foreground whitespace-pre-wrap break-words">
             <RichText text={displayText} hideUrls={hasLinkCard} />
             {isLongText && !textExpanded && (
@@ -800,71 +800,71 @@ export function PostCard({
 
         {/* Engagement metrics — X layout */}
         {metrics && (
-          <div className="mt-1 flex items-center justify-between -ml-2">
+          <div className="mt-1 flex items-center justify-between max-w-full">
             {/* Replies — blue on hover */}
-            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
-              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
-                <MessageCircle className="h-[18.75px] w-[18.75px]" />
+            <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+              <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
+                <MessageCircle className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
               </div>
               {(metrics.replies ?? 0) > 0 && (
-                <span className="text-[13px] leading-4">
+                <span className="text-[12px] sm:text-[13px] leading-4">
                   {formatNumber(metrics.replies!)}
                 </span>
               )}
             </div>
 
             {/* Reposts — green on hover */}
-            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#00ba7c] cursor-pointer">
-              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#00ba7c]/10">
-                <Repeat2 className="h-[18.75px] w-[18.75px]" />
+            <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#00ba7c] cursor-pointer">
+              <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#00ba7c]/10">
+                <Repeat2 className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
               </div>
               {(metrics.reposts ?? 0) > 0 && (
-                <span className="text-[13px] leading-4">
+                <span className="text-[12px] sm:text-[13px] leading-4">
                   {formatNumber(metrics.reposts!)}
                 </span>
               )}
             </div>
 
             {/* Likes — pink on hover */}
-            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#f91880] cursor-pointer">
-              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#f91880]/10">
-                <Heart className="h-[18.75px] w-[18.75px]" />
+            <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#f91880] cursor-pointer">
+              <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#f91880]/10">
+                <Heart className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
               </div>
               {(metrics.likes ?? 0) > 0 && (
-                <span className="text-[13px] leading-4">
+                <span className="text-[12px] sm:text-[13px] leading-4">
                   {formatNumber(metrics.likes!)}
                 </span>
               )}
             </div>
 
             {/* Views — blue on hover */}
-            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
-              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
-                <Eye className="h-[18.75px] w-[18.75px]" />
+            <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+              <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
+                <Eye className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
               </div>
               {(metrics.views ?? 0) > 0 && (
-                <span className="text-[13px] leading-4">
+                <span className="text-[12px] sm:text-[13px] leading-4">
                   {formatNumber(metrics.views!)}
                 </span>
               )}
             </div>
 
             {/* Bookmark — blue on hover */}
-            <div className="group/metric flex items-center gap-1 text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
-              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
-                <Bookmark className="h-[18.75px] w-[18.75px]" />
+            <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+              <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
+                <Bookmark className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
               </div>
               {(metrics.bookmarks ?? 0) > 0 && (
-                <span className="text-[13px] leading-4">
+                <span className="text-[12px] sm:text-[13px] leading-4">
                   {formatNumber(metrics.bookmarks!)}
                 </span>
               )}
             </div>
 
             {/* Share — blue on hover, hidden on small mobile */}
-            <div className="group/metric hidden sm:flex items-center text-muted-foreground p-2 transition-colors hover:text-[#1d9bf0] cursor-pointer">
-              <div className="rounded-full p-1.5 -m-1.5 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
-                <Share className="h-[18.75px] w-[18.75px]" />
+            <div className="group/metric hidden sm:flex items-center text-muted-foreground p-1.5 transition-colors hover:text-[#1d9bf0] cursor-pointer">
+              <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
+                <Share className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
               </div>
             </div>
           </div>

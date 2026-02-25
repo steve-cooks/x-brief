@@ -286,7 +286,7 @@ export function BriefingView() {
           </div>
 
           {/* Tab content */}
-          <div className="max-w-[598px] mx-auto md:border-x md:border-border min-h-screen">
+          <div style={{maxWidth: 'min(598px, 100%)', overflow: 'hidden'}} className="w-full mx-auto md:border-x md:border-border min-h-screen">
             {availableTabs.map((tab) => (
               <TabsContent
                 key={tab.id}
@@ -298,6 +298,7 @@ export function BriefingView() {
                     <div
                       key={`${post.authorUsername}-${index}`}
                       className="px-4 py-3 border-b border-border cursor-pointer hover:bg-foreground/[0.03] transition-colors"
+                      style={{maxWidth: '100%', overflow: 'hidden'}}
                       onClick={() => {
                         if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
                       }}
