@@ -261,9 +261,11 @@ function SimpleLinkCard({ url }: { url: string }) {
 function MediaGrid({
   media,
   onImageClick,
+  onMediaOpen,
 }: {
   media: MediaItem[]
   onImageClick?: (url: string) => void
+  onMediaOpen?: (items: MediaItem[], index: number) => void
 }) {
   const count = media.length
 
@@ -271,7 +273,7 @@ function MediaGrid({
 
   if (count === 1) {
     return (
-      <SingleMedia item={media[0]} onImageClick={onImageClick} />
+      <SingleMedia item={media[0]} onImageClick={onImageClick} onMediaOpen={onMediaOpen ? () => onMediaOpen(media, 0) : undefined} />
     )
   }
 
@@ -280,7 +282,7 @@ function MediaGrid({
       <div className="mt-3 w-full max-w-full grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border">
         {media.map((item, i) => (
           <div key={i} className="relative aspect-square bg-accent overflow-hidden">
-            <MediaContent item={item} fill onImageClick={onImageClick} />
+            <MediaContent item={item} fill onImageClick={onImageClick} onMediaOpen={onMediaOpen ? () => onMediaOpen(media, i) : undefined} />
           </div>
         ))}
       </div>
@@ -291,13 +293,13 @@ function MediaGrid({
     return (
       <div className="mt-3 w-full max-w-full grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
         <div className="relative row-span-2 bg-accent overflow-hidden">
-          <MediaContent item={media[0]} fill onImageClick={onImageClick} />
+          <MediaContent item={media[0]} fill onImageClick={onImageClick} onMediaOpen={onMediaOpen ? () => onMediaOpen(media, 0) : undefined} />
         </div>
         <div className="relative bg-accent overflow-hidden">
-          <MediaContent item={media[1]} fill onImageClick={onImageClick} />
+          <MediaContent item={media[1]} fill onImageClick={onImageClick} onMediaOpen={onMediaOpen ? () => onMediaOpen(media, 1) : undefined} />
         </div>
         <div className="relative bg-accent overflow-hidden">
-          <MediaContent item={media[2]} fill onImageClick={onImageClick} />
+          <MediaContent item={media[2]} fill onImageClick={onImageClick} onMediaOpen={onMediaOpen ? () => onMediaOpen(media, 2) : undefined} />
         </div>
       </div>
     )
@@ -308,7 +310,7 @@ function MediaGrid({
     <div className="mt-3 w-full max-w-full grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-border" style={{ aspectRatio: "16/9" }}>
       {media.slice(0, 4).map((item, i) => (
         <div key={i} className="relative bg-accent overflow-hidden">
-          <MediaContent item={item} fill onImageClick={onImageClick} />
+          <MediaContent item={item} fill onImageClick={onImageClick} onMediaOpen={onMediaOpen ? () => onMediaOpen(media, i) : undefined} />
         </div>
       ))}
     </div>
@@ -319,9 +321,11 @@ function MediaGrid({
 function SingleMedia({
   item,
   onImageClick,
+  onMediaOpen,
 }: {
   item: MediaItem
   onImageClick?: (url: string) => void
+  onMediaOpen?: () => void
 }) {
   if (item.type === "photo" && item.url) {
     return (
@@ -342,7 +346,7 @@ function SingleMedia({
   if (item.type === "video") {
     return (
       <div className="mt-3 w-full max-w-full rounded-2xl overflow-hidden border border-border">
-        <VideoPlayer item={item} />
+        <VideoPlayer item={item} onMediaOpen={onMediaOpen} />
       </div>
     )
   }
@@ -350,7 +354,7 @@ function SingleMedia({
   if (item.type === "animated_gif") {
     return (
       <div className="mt-3 w-full max-w-full rounded-2xl overflow-hidden border border-border">
-        <GifPlayer item={item} />
+        <GifPlayer item={item} onMediaOpen={onMediaOpen} />
       </div>
     )
   }
@@ -363,10 +367,12 @@ function MediaContent({
   item,
   fill,
   onImageClick,
+  onMediaOpen,
 }: {
   item: MediaItem
   fill?: boolean
   onImageClick?: (url: string) => void
+  onMediaOpen?: () => void
 }) {
   if (item.type === "photo" && item.url) {
     return (
@@ -383,18 +389,18 @@ function MediaContent({
   }
 
   if (item.type === "video") {
-    return <VideoPlayer item={item} fill />
+    return <VideoPlayer item={item} fill onMediaOpen={onMediaOpen} />
   }
 
   if (item.type === "animated_gif") {
-    return <GifPlayer item={item} fill />
+    return <GifPlayer item={item} fill onMediaOpen={onMediaOpen} />
   }
 
   return null
 }
 
 /** Video player with poster + play button overlay */
-function VideoPlayer({ item, fill }: { item: MediaItem; fill?: boolean }) {
+function VideoPlayer({ item, fill, onMediaOpen }: { item: MediaItem; fill?: boolean; onMediaOpen?: () => void }) {
   const [playing, setPlaying] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -418,7 +424,11 @@ function VideoPlayer({ item, fill }: { item: MediaItem; fill?: boolean }) {
         className={`relative cursor-pointer ${fill ? "w-full h-full" : ""}`}
         onClick={(e) => {
           e.stopPropagation()
-          setPlaying(true)
+          if (onMediaOpen) {
+            onMediaOpen()
+          } else {
+            setPlaying(true)
+          }
         }}
       >
         {posterUrl && (
@@ -461,12 +471,18 @@ function VideoPlayer({ item, fill }: { item: MediaItem; fill?: boolean }) {
 }
 
 /** GIF player — auto-loops, muted, no controls, with "GIF" badge */
-function GifPlayer({ item, fill }: { item: MediaItem; fill?: boolean }) {
+function GifPlayer({ item, fill, onMediaOpen }: { item: MediaItem; fill?: boolean; onMediaOpen?: () => void }) {
   const videoUrl = proxyUrl(item.video_url)
   const posterUrl = proxyUrl(item.preview_image_url || item.url)
 
   return (
-    <div className={`relative ${fill ? "w-full h-full" : ""}`}>
+    <div
+      className={`relative cursor-pointer ${fill ? "w-full h-full" : ""}`}
+      onClick={(e) => {
+        e.stopPropagation()
+        onMediaOpen?.()
+      }}
+    >
       {videoUrl ? (
         <video
           src={videoUrl}
@@ -480,7 +496,6 @@ function GifPlayer({ item, fill }: { item: MediaItem; fill?: boolean }) {
               ? "w-full h-full object-cover"
               : "w-full max-h-[510px] object-cover"
           }
-          onClick={(e) => e.stopPropagation()}
         />
       ) : posterUrl ? (
         <img
@@ -672,6 +687,7 @@ interface PostCardProps {
   category?: string
   quotedPost?: QuotedPostData
   linkCard?: LinkCardData
+  onMediaOpen?: (items: MediaItem[], index: number) => void
 }
 
 const TRUNCATE_LENGTH = 280
@@ -689,6 +705,7 @@ export function PostCard({
   createdAt,
   quotedPost,
   linkCard,
+  onMediaOpen,
 }: PostCardProps) {
   const [textExpanded, setTextExpanded] = useState(false)
 
@@ -722,7 +739,12 @@ export function PostCard({
   }, [textSegments, hasLinkCard, hasMedia])
 
   const handleImageClick = (url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer")
+    if (onMediaOpen && media && media.length > 0) {
+      const index = media.findIndex((m) => m.url === url)
+      onMediaOpen(media, index >= 0 ? index : 0)
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer")
+    }
   }
 
   return (

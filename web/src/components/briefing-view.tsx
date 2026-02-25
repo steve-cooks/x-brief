@@ -1,11 +1,13 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { useTheme } from "next-themes"
 import { PostCard } from "@/components/x-brief/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RefreshCw, Sun, Moon, AlertTriangle } from "lucide-react"
+import { useSwipeTabs } from "@/hooks/use-swipe-tabs"
+import { MediaViewer } from "@/components/media-viewer"
 
 interface BriefingData {
   generated_at: string
@@ -133,6 +135,10 @@ export function BriefingView() {
   const [refreshing, setRefreshing] = useState(false)
   const [minutesAgo, setMinutesAgo] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<string>("")
+  const [mediaViewer, setMediaViewer] = useState<{
+    items: Array<{ type: string; url?: string; preview_image_url?: string; video_url?: string; alt_text?: string }>
+    index: number
+  } | null>(null)
 
   // Derive tabs from actual briefing data — only sections that have posts
   const availableTabs = briefing
@@ -149,6 +155,15 @@ export function BriefingView() {
           return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
         })
     : []
+
+  const tabIds = useMemo(() => availableTabs.map((t) => t.id), [availableTabs])
+
+  const swipeRef = useSwipeTabs({
+    tabIds,
+    activeTab,
+    onTabChange: setActiveTab,
+    enabled: availableTabs.length > 1,
+  })
 
   // Set default active tab when briefing loads
   useEffect(() => {
@@ -287,7 +302,10 @@ export function BriefingView() {
             </div>
 
             {/* Tab content */}
-            <div className="max-w-[598px] w-full mx-auto md:border-x md:border-border min-h-screen overflow-hidden">
+            <div
+              ref={swipeRef}
+              className="max-w-[598px] w-full mx-auto md:border-x md:border-border min-h-screen overflow-hidden"
+            >
               {availableTabs.map((tab) => (
                 <TabsContent
                   key={tab.id}
@@ -303,7 +321,10 @@ export function BriefingView() {
                           if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
                         }}
                       >
-                        <PostCard {...post} />
+                        <PostCard
+                          {...post}
+                          onMediaOpen={(items, idx) => setMediaViewer({ items, index: idx })}
+                        />
                       </div>
                     ))}
                   </div>
@@ -337,6 +358,22 @@ export function BriefingView() {
             Last updated {formatLastUpdated(briefing.generated_at)}
           </p>
         </div>
+      )}
+
+      {/* Full-screen media viewer */}
+      {mediaViewer && (
+        <MediaViewer
+          items={mediaViewer.items}
+          initialIndex={mediaViewer.index}
+          onClose={() => setMediaViewer(null)}
+          proxyUrl={(url) => {
+            if (!url) return undefined
+            if (url.includes("video.twimg.com") || url.includes("pbs.twimg.com")) {
+              return `/api/media?url=${encodeURIComponent(url)}`
+            }
+            return url
+          }}
+        />
       )}
     </div>
   )
