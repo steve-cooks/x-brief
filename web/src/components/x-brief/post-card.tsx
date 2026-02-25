@@ -726,7 +726,7 @@ export function PostCard({
   }
 
   return (
-    <article className="flex gap-3 group min-h-[44px] min-w-0">
+    <article className="flex gap-3 group min-h-[44px] min-w-0 max-w-full overflow-hidden">
       {/* Avatar */}
       <div className="flex-shrink-0">
         <Avatar className="h-10 w-10">

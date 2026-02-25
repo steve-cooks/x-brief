@@ -264,3 +264,9 @@
   max-width: 100% !important;
   overflow: hidden !important;
 }
+
+/* Hard width constraint for post content — prevents flex children from exceeding viewport */
+[data-slot="tabs-content"] > * {
+  max-width: 100%;
+  overflow: hidden;
+}

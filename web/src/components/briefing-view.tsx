@@ -260,57 +260,58 @@ export function BriefingView() {
 
       {/* Main content */}
       {!loading && briefing && availableTabs.length > 0 && (
-        <Tabs
-          key={briefing.generated_at}
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          {/* Tab navigation */}
-          <div className="sticky top-[53px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
-            <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
-              <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
-                {availableTabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-muted-foreground hover:bg-foreground/[0.03] data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-1 after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
-                  >
-                    <span className="text-[15px] whitespace-nowrap">
-                      {tab.label}
-                    </span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-          </div>
-
-          {/* Tab content */}
-          <div style={{maxWidth: 'min(598px, 100%)', overflow: 'hidden'}} className="w-full mx-auto md:border-x md:border-border min-h-screen">
-            {availableTabs.map((tab) => (
-              <TabsContent
-                key={tab.id}
-                value={tab.id}
-                className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
-              >
-                <div>
-                  {tab.posts.map((post, index) => (
-                    <div
-                      key={`${post.authorUsername}-${index}`}
-                      className="px-4 py-3 border-b border-border cursor-pointer hover:bg-foreground/[0.03] transition-colors"
-                      style={{maxWidth: '100%', overflow: 'hidden'}}
-                      onClick={() => {
-                        if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
-                      }}
+        <div className="w-full overflow-hidden">
+          <Tabs
+            key={briefing.generated_at}
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            {/* Tab navigation */}
+            <div className="sticky top-[53px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
+              <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
+                <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
+                  {availableTabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-muted-foreground hover:bg-foreground/[0.03] data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-1 after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                     >
-                      <PostCard {...post} />
-                    </div>
+                      <span className="text-[15px] whitespace-nowrap">
+                        {tab.label}
+                      </span>
+                    </TabsTrigger>
                   ))}
-                </div>
-              </TabsContent>
-            ))}
-          </div>
-        </Tabs>
+                </TabsList>
+              </div>
+            </div>
+
+            {/* Tab content */}
+            <div className="max-w-[598px] w-full mx-auto md:border-x md:border-border min-h-screen overflow-hidden">
+              {availableTabs.map((tab) => (
+                <TabsContent
+                  key={tab.id}
+                  value={tab.id}
+                  className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
+                >
+                  <div>
+                    {tab.posts.map((post, index) => (
+                      <div
+                        key={`${post.authorUsername}-${index}`}
+                        className="px-4 py-3 border-b border-border cursor-pointer hover:bg-foreground/[0.03] transition-colors overflow-hidden"
+                        onClick={() => {
+                          if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
+                        }}
+                      >
+                        <PostCard {...post} />
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              ))}
+            </div>
+          </Tabs>
+        </div>
       )}
 
       {/* No briefing yet */}
