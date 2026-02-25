@@ -260,7 +260,7 @@ export function BriefingView() {
 
       {/* Main content */}
       {!loading && briefing && availableTabs.length > 0 && (
-        <div className="w-full overflow-hidden">
+        <div className="w-full overflow-x-clip">
           <Tabs
             key={briefing.generated_at}
             value={activeTab}
