@@ -34,6 +34,14 @@ X Brief is a two-part project: a Python pipeline that fetches/curates X (Twitter
 - Dynamic web rendering: homepage and API route are `force-dynamic` to avoid stale build-time data.
 
 ## Gotchas
+- **Tailwind v4 — CSS-based config, NO `tailwind.config.ts`.** Uses `@import "tailwindcss"` syntax.
+- **`cn()`/tailwind-merge EATS class overrides on Radix/shadcn components.** The merger strips "conflicting" classes. Use inline `style` props for reliable overrides on Radix primitives (especially Tabs).
+- **`overflow-x-clip` over `overflow-hidden`** — `clip` doesn't create a scroll container, so `position: sticky` children still work. `hidden` breaks sticky.
+- **Sticky tab nav `top-[54px]`** — header is 53px content + 1px border = 54px total.
+- **CSS `!important` outside `@layer` is UNRELIABLE** for overriding Radix component defaults in Tailwind v4.
+- **Service: `systemctl --user status x-brief-web.service`**. Dev server on port 3000.
+- **Pipeline runs via cron** (4x daily via `x-brief-pipeline` cron) — data lives in `data/latest-briefing.json`.
+- **Scan files come from `~/projects/second-brain/timeline_scans/`** (Rabbit's X timeline scans).
 - `x-brief brief` currently re-fetches recent posts (demo path) instead of being purely cache-driven.
 - `web/src/app/api/briefing/route.ts` has a machine-specific fallback path: `/home/cluvis/projects/x-brief/data/latest-briefing.json`.
 - Sticky tabs can break if an ancestor uses `overflow: hidden`; bug notes are in `TAB_NAV_BUG.md`.
