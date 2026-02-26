@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useTheme } from "next-themes"
 import { PostCard } from "@/components/x-brief/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RefreshCw, Sun, Moon, AlertTriangle } from "lucide-react"
 import { useSwipeTabs } from "@/hooks/use-swipe-tabs"
 import { MediaViewer } from "@/components/media-viewer"
+import { markPostsAsRead, getReadPostIds, clearOldReadState } from "@/lib/read-state"
+import { trackEvent } from "@/lib/analytics"
 
 interface BriefingData {
   generated_at: string
@@ -75,10 +77,11 @@ const SECTION_DISPLAY: Record<string, { label: string; id: string }> = {
   "WORTH A LOOK": { label: "Picks", id: "worth_a_look" },
   "VIRAL 🔥": { label: "Viral 🔥", id: "viral" },
   "YOUR CIRCLE": { label: "Your Circle", id: "your_circle" },
+  "ARTICLES & THREADS": { label: "Articles", id: "articles" },
 }
 
 // Preferred tab order
-const TAB_ORDER = ["top_stories", "viral", "your_circle", "trending", "worth_a_look"]
+const TAB_ORDER = ["top_stories", "viral", "your_circle", "articles", "trending", "worth_a_look"]
 
 function formatStat(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -129,39 +132,115 @@ function ThemeToggle() {
   )
 }
 
+/** Extract a stable post ID from a postUrl like https://x.com/user/status/123 */
+function postIdFromUrl(postUrl?: string): string | null {
+  if (!postUrl) return null
+  const match = postUrl.match(/\/status\/(\d+)/)
+  return match ? match[1] : null
+}
+
 export function BriefingView() {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [minutesAgo, setMinutesAgo] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<string>("")
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
   const [mediaViewer, setMediaViewer] = useState<{
     items: Array<{ type: string; url?: string; preview_image_url?: string; video_url?: string; alt_text?: string }>
     index: number
   } | null>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const pendingReadRef = useRef<Set<string>>(new Set())
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Derive tabs from actual briefing data — only sections that have posts
-  const availableTabs = briefing
-    ? briefing.sections
-        .filter((s) => s.posts.length > 0 && SECTION_DISPLAY[s.title])
-        .map((s) => ({
-          ...SECTION_DISPLAY[s.title],
-          posts: s.posts,
-          count: s.posts.length,
-        }))
-        .sort((a, b) => {
-          const ai = TAB_ORDER.indexOf(a.id)
-          const bi = TAB_ORDER.indexOf(b.id)
-          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  // Load read state + cleanup on mount, track page_view
+  useEffect(() => {
+    clearOldReadState()
+    setReadIds(getReadPostIds())
+    trackEvent("page_view")
+  }, [])
+
+  // Flush pending read IDs every 2s
+  useEffect(() => {
+    const flush = () => {
+      if (pendingReadRef.current.size > 0) {
+        const ids = Array.from(pendingReadRef.current)
+        pendingReadRef.current.clear()
+        markPostsAsRead(ids)
+        setReadIds((prev) => {
+          const next = new Set(prev)
+          for (const id of ids) next.add(id)
+          return next
         })
-    : []
+      }
+    }
+    const interval = setInterval(flush, 2000)
+    return () => {
+      clearInterval(interval)
+      flush() // flush on unmount
+    }
+  }, [])
+
+  // Setup IntersectionObserver for marking posts as read + tracking impressions
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const postId = (entry.target as HTMLElement).dataset.postId
+            if (postId) {
+              pendingReadRef.current.add(postId)
+              trackEvent("post_impression", { postId })
+            }
+            observerRef.current?.unobserve(entry.target)
+          }
+        }
+      },
+      { threshold: 0.5 }
+    )
+    return () => observerRef.current?.disconnect()
+  }, [])
+
+  // Derive tabs from actual briefing data — only sections that have posts (after filtering read)
+  const availableTabs = useMemo(() => {
+    if (!briefing) return []
+    return briefing.sections
+      .map((s) => {
+        const display = SECTION_DISPLAY[s.title]
+        if (!display) return null
+        // Filter out read posts
+        const unread = s.posts.filter((p) => {
+          const id = postIdFromUrl(p.postUrl)
+          return !id || !readIds.has(id)
+        })
+        if (unread.length === 0) return null
+        return {
+          ...display,
+          posts: unread,
+          count: unread.length,
+          totalCount: s.posts.length,
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const ai = TAB_ORDER.indexOf(a!.id)
+        const bi = TAB_ORDER.indexOf(b!.id)
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+      }) as Array<{ label: string; id: string; posts: BriefingData["sections"][0]["posts"]; count: number; totalCount: number }>
+  }, [briefing, readIds])
 
   const tabIds = useMemo(() => availableTabs.map((t) => t.id), [availableTabs])
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab)
+    trackEvent("tab_switch", { tab })
+  }, [])
 
   const swipeRef = useSwipeTabs({
     tabIds,
     activeTab,
-    onTabChange: setActiveTab,
+    onTabChange: handleTabChange,
     enabled: availableTabs.length > 1,
   })
 
@@ -279,7 +358,7 @@ export function BriefingView() {
           <Tabs
             key={briefing.generated_at}
             value={activeTab}
-            onValueChange={setActiveTab}
+            onValueChange={handleTabChange}
             className="w-full"
           >
             {/* Tab navigation */}
@@ -313,20 +392,35 @@ export function BriefingView() {
                   className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
                 >
                   <div>
-                    {tab.posts.map((post, index) => (
-                      <div
-                        key={`${post.authorUsername}-${index}`}
-                        className="px-4 py-3 border-b border-border cursor-pointer hover:bg-foreground/[0.03] transition-colors overflow-hidden"
-                        onClick={() => {
-                          if (post.postUrl) window.open(post.postUrl, "_blank", "noopener,noreferrer")
-                        }}
-                      >
-                        <PostCard
-                          {...post}
-                          onMediaOpen={(items, idx) => setMediaViewer({ items, index: idx })}
-                        />
-                      </div>
-                    ))}
+                    {tab.posts.map((post, index) => {
+                      const pid = postIdFromUrl(post.postUrl)
+                      return (
+                        <div
+                          key={pid || `${post.authorUsername}-${index}`}
+                          data-post-id={pid || undefined}
+                          ref={(el) => {
+                            if (el && pid && observerRef.current) {
+                              observerRef.current.observe(el)
+                            }
+                          }}
+                          className="px-4 py-3 border-b border-border cursor-pointer hover:bg-foreground/[0.03] transition-colors overflow-hidden"
+                          onClick={() => {
+                            if (post.postUrl) {
+                              trackEvent("post_click", { postId: pid || post.authorUsername })
+                              window.open(post.postUrl, "_blank", "noopener,noreferrer")
+                            }
+                          }}
+                        >
+                          <PostCard
+                            {...post}
+                            onMediaOpen={(items, idx) => {
+                              trackEvent("media_open", { postId: pid || post.authorUsername })
+                              setMediaViewer({ items, index: idx })
+                            }}
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
                 </TabsContent>
               ))}

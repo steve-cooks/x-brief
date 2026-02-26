@@ -241,6 +241,39 @@ def curate_briefing(
     if trend_items:
         sections.append(BriefingSection(title="TRENDING IN YOUR NICHES", emoji="🔥", items=trend_items))
     
+    # Section 3.5: ARTICLES & THREADS — posts with external URLs or long text
+    article_items = []
+    article_authors: set[str] = set()
+    for p, s in scored:
+        if p.id in used_ids:
+            continue
+        if p.author_id in article_authors:
+            continue  # cap 1 per account
+        m = p.metrics
+        # Must meet minimum engagement: 500 likes or 50K views
+        if m.likes < 500 and m.views < 50_000:
+            continue
+        # Detect articles: external URLs (not x.com/twitter.com)
+        external_urls = [
+            u for u in p.urls
+            if 'x.com' not in u and 'twitter.com' not in u and 't.co' not in u
+        ]
+        is_long_thread = len(p.text) > 280
+        has_article = len(external_urls) > 0
+        if has_article or is_long_thread:
+            article_items.append(BriefingItem(
+                post=p,
+                summary=clean_summary(p.text),
+                category="Articles & Threads",
+                score=s,
+            ))
+            article_authors.add(p.author_id)
+            used_ids.add(p.id)
+            if len(article_items) >= 4:
+                break
+    if article_items:
+        sections.append(BriefingSection(title="ARTICLES & THREADS", emoji="📰", items=article_items))
+
     # Section 4: WORTH A LOOK — breakout posts + interesting outliers
     worth_scored = [(p, s) for p, s in scored if p.id not in used_ids and (p.id in breakouts or s > 0)]
     worth_scored = cap_posts_per_account(worth_scored)

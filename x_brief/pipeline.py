@@ -129,7 +129,7 @@ async def run_briefing(config_path: str, hours: int = 24) -> str:
 async def run_briefing_from_scans(
     config_path: str,
     scan_dir: str = None,
-    hours: int = 48,
+    hours: int = 36,
     skip_dedup: bool = False,
 ) -> str:
     """
@@ -378,7 +378,7 @@ def main():
         sys.exit(1)
     
     config_path = sys.argv[1]
-    hours = 48 if "--from-scans" in sys.argv else 24
+    hours = 36 if "--from-scans" in sys.argv else 24
     if "--hours" in sys.argv:
         idx = sys.argv.index("--hours")
         hours = int(sys.argv[idx + 1])

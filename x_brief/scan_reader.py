@@ -118,6 +118,72 @@ def parse_human_number(value) -> int:
         return 0
 
 
+def parse_posted_at(posted_at: str, scan_time: datetime) -> Optional[datetime]:
+    """
+    Parse relative/absolute time strings from scan data into actual datetimes.
+
+    Handles:
+    - Relative: "57m ago", "2h ago", "3d ago", "57 minutes ago", "2 hours ago"
+    - Short relative: "2h", "30m", "3d" (no "ago" suffix)
+    - Absolute month-day: "Feb 23", "Jan 5"
+    - ISO-ish: "2026-02-23", "2026-02-23T10:00:00Z"
+    """
+    if not posted_at or not isinstance(posted_at, str):
+        return None
+
+    posted_at = posted_at.strip()
+    if not posted_at:
+        return None
+
+    # --- Relative: "Xm ago", "X minutes ago", "Xh ago", "X hours ago", "Xd ago", "X days ago" ---
+    rel_match = re.match(
+        r'^(\d+)\s*(?:(m|min|mins|minute|minutes)|(h|hr|hrs|hour|hours)|(d|day|days))\s*(?:ago)?$',
+        posted_at, re.IGNORECASE
+    )
+    if rel_match:
+        amount = int(rel_match.group(1))
+        if rel_match.group(2):  # minutes
+            return scan_time - timedelta(minutes=amount)
+        elif rel_match.group(3):  # hours
+            return scan_time - timedelta(hours=amount)
+        elif rel_match.group(4):  # days
+            return scan_time - timedelta(days=amount)
+
+    # --- "just now" / "now" ---
+    if posted_at.lower() in ("just now", "now"):
+        return scan_time
+
+    # --- Absolute month-day: "Feb 23", "January 5" ---
+    month_day_match = re.match(
+        r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})$',
+        posted_at, re.IGNORECASE
+    )
+    if month_day_match:
+        try:
+            month_str = month_day_match.group(1)
+            day = int(month_day_match.group(2))
+            # Use scan_time's year, handle year rollover
+            candidate = datetime.strptime(f"{month_str} {day} {scan_time.year}", "%b %d %Y")
+            candidate = candidate.replace(tzinfo=timezone.utc)
+            # If candidate is in the future, it's probably last year
+            if candidate > scan_time:
+                candidate = candidate.replace(year=scan_time.year - 1)
+            return candidate
+        except ValueError:
+            pass
+
+    # --- ISO date/datetime: "2026-02-23" or "2026-02-23T10:00:00Z" ---
+    try:
+        parsed = datetime.fromisoformat(posted_at.replace('Z', '+00:00'))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except ValueError:
+        pass
+
+    return None
+
+
 def sanitize_pinned(value: str) -> str:
     """Strip '(pinned)' artifacts from scraped author data."""
     if not value:
@@ -290,7 +356,11 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         
         # Extract URLs from text
         urls = re.findall(r'https?://\S+', text)
-        
+
+        # Parse posted_at for accurate post time
+        posted_at_str = post_data.get('posted_at') or post_data.get('time') or ''
+        parsed_time = parse_posted_at(posted_at_str, scan_time) or scan_time
+
         # Create Post object
         post = Post(
             id=post_id,
@@ -298,7 +368,7 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
             author_id=author_username,  # Use username as ID since we don't have real IDs
             author_username=author_username,
             author_name=author_name,
-            created_at=scan_time,  # Use scan time as proxy for post time
+            created_at=parsed_time,  # Use parsed posted_at, fall back to scan_time
             metrics=metrics,
             media=media_items,
             urls=urls,

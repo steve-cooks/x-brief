@@ -151,19 +151,27 @@ def score_post(post: Post, followers_count: int) -> float:
     follower_factor = math.log10(followers + 1)  # +1 to avoid log(0)
     normalized_score = engagement / max(follower_factor, 1)
     
-    # Time decay factor
+    # Time decay factor — aggressive decay for older posts
     now = datetime.now(timezone.utc)
     post_age_hours = (now - post.created_at).total_seconds() / 3600
-    
+
     if post_age_hours <= 6:
         time_factor = 2.0
     elif post_age_hours <= 12:
         time_factor = 1.5
     elif post_age_hours <= 24:
         time_factor = 1.0
-    else:  # 24-48h
-        time_factor = 0.7
-    
+    elif post_age_hours <= 36:
+        time_factor = 0.5
+    elif post_age_hours <= 48:
+        time_factor = 0.3
+    else:  # 48h+
+        time_factor = 0.1
+
+    # Mega-viral posts get softer decay (halve the penalty)
+    if time_factor < 1.0 and is_mega_viral(post):
+        time_factor = 1.0 - (1.0 - time_factor) / 2  # e.g. 0.5 -> 0.75, 0.3 -> 0.65, 0.1 -> 0.55
+
     normalized_score *= time_factor
     
     # Boost for high absolute engagement
