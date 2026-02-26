@@ -161,18 +161,14 @@ export function BriefingView() {
     trackEvent("page_view")
   }, [])
 
-  // Flush pending read IDs every 2s
+  // Flush pending read IDs every 2s — saves to localStorage only (for next session).
+  // Does NOT update readIds state, so posts stay visible during the current session.
   useEffect(() => {
     const flush = () => {
       if (pendingReadRef.current.size > 0) {
         const ids = Array.from(pendingReadRef.current)
         pendingReadRef.current.clear()
         markPostsAsRead(ids)
-        setReadIds((prev) => {
-          const next = new Set(prev)
-          for (const id of ids) next.add(id)
-          return next
-        })
       }
     }
     const interval = setInterval(flush, 2000)
@@ -202,7 +198,9 @@ export function BriefingView() {
     return () => observerRef.current?.disconnect()
   }, [])
 
-  // Derive tabs from actual briefing data — only sections that have posts (after filtering read)
+  // Derive tabs from actual briefing data.
+  // On load: filter out previously-read posts to show fresh content.
+  // If ALL posts in a section are read, show them all anyway (never leave an empty tab).
   const availableTabs = useMemo(() => {
     if (!briefing) return []
     return briefing.sections
@@ -214,11 +212,13 @@ export function BriefingView() {
           const id = postIdFromUrl(p.postUrl)
           return !id || !readIds.has(id)
         })
-        if (unread.length === 0) return null
+        // If everything is read, show all posts — never leave an empty section
+        const postsToShow = unread.length > 0 ? unread : s.posts
+        if (postsToShow.length === 0) return null
         return {
           ...display,
-          posts: unread,
-          count: unread.length,
+          posts: postsToShow,
+          count: postsToShow.length,
           totalCount: s.posts.length,
         }
       })
