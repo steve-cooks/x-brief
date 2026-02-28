@@ -14,3 +14,9 @@ storybook-static/
 web/node_modules/
 web/.next/
 web/convex/_generated/
+.env.*
+secrets.json
+secrets/
+*.key
+*.pem
+!.env.example
