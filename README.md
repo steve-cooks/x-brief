@@ -174,8 +174,8 @@ MIT
 - **Vision:** SaaS product — no user X credentials needed, uses X API v2 (pay-per-usage)
 - **Two modes:** OpenClaw skill (chat delivery) + Standalone (email newsletter)
 - **Architecture:** ARCHITECTURE.md — 4 phases from MVP to ML personalization
-- **Steve's following list:** ~/projects/second-brain/steve_following.json
-- **Must fetch ALL accounts Steve follows** — use X API pagination for complete list
+- **Following export path (example):** `~/your-scan-dir/your_following.json`
+- **Must fetch ALL accounts you follow** — use X API pagination for complete list
 - **UI mimics X's tab layout** — "For You" and "Following" style tabs
 - **Crons:** auto-update OpenClaw (4AM CT / 10:00 UTC)
 - **Claude Code:** v2.1.38, authenticated

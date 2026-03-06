@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 export const dynamic = "force-dynamic"
+const MAX_ANALYTICS_PAYLOAD_BYTES = 50 * 1024
 
 /**
  * GET /api/analytics
@@ -28,7 +29,13 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    // SECURITY NOTE: Disable this endpoint or enforce strict auth/rate limits before production deployment.
+    const rawBody = await request.text()
+    if (new TextEncoder().encode(rawBody).length > MAX_ANALYTICS_PAYLOAD_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+    }
+
+    const body = JSON.parse(rawBody)
     const events = Array.isArray(body) ? body : body.events || []
     // Log to stdout for collection by systemd journal
     console.log(`[analytics] Received ${events.length} events`)

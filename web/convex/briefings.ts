@@ -1,6 +1,24 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+/**
+ * SECURITY NOTE:
+ * These functions include only minimal guards for open-source/dev usage.
+ * Add full authentication + authorization checks before production deployment.
+ */
+async function requireAuthenticatedRequest(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Unauthorized: authentication required.");
+  }
+}
+
+function ensureNonEmptyId(value: unknown, fieldName: string) {
+  if (!String(value ?? "").trim()) {
+    throw new Error(`Invalid ${fieldName}: value is required.`);
+  }
+}
+
 const postValidator = v.object({
   author: v.string(),
   authorHandle: v.string(),
@@ -26,6 +44,9 @@ export const createBriefing = mutation({
     sections: v.array(sectionValidator),
   },
   handler: async (ctx, args) => {
+    await requireAuthenticatedRequest(ctx);
+    ensureNonEmptyId(args.userId, "userId");
+
     const briefingId = await ctx.db.insert("briefings", {
       userId: args.userId,
       title: args.title,
@@ -73,6 +94,7 @@ export const getBriefing = query({
 export const deleteBriefing = mutation({
   args: { id: v.id("briefings") },
   handler: async (ctx, args) => {
+    await requireAuthenticatedRequest(ctx);
     await ctx.db.delete(args.id);
   },
 });

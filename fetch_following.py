@@ -4,9 +4,14 @@
 import httpx
 import json
 import asyncio
+import os
 from pathlib import Path
 
-BEARER_TOKEN = "REDACTED_BEARER_TOKEN"
+BEARER_TOKEN = os.environ.get("X_BRIEF_BEARER_TOKEN", "")
+if not BEARER_TOKEN:
+    print("Error: X_BRIEF_BEARER_TOKEN environment variable is required.")
+    raise SystemExit(1)
+
 BASE_URL = "https://api.twitter.com/2"
 
 async def get_user_id(username: str) -> str:

@@ -133,16 +133,16 @@ async def run_briefing_from_scans(
     skip_dedup: bool = False,
 ) -> str:
     """
-    Pipeline that reads from Rabbit's timeline scan data instead of the X API.
+    Pipeline that reads timeline scan data instead of the X API.
     
     Args:
         config_path: Path to user config (for interests, tracked accounts)
-        scan_dir: Directory with scan JSONs (default: ~/projects/second-brain/timeline_scans/)
+        scan_dir: Directory with scan JSONs (default: X_BRIEF_SCAN_DIR or ./timeline_scans/)
         hours: Only include posts from scans within the last N hours (default 48)
     """
     # Default scan directory
     if scan_dir is None:
-        scan_dir = os.path.expanduser("~/projects/second-brain/timeline_scans/")
+        scan_dir = os.environ.get("X_BRIEF_SCAN_DIR", "./timeline_scans/")
     
     # History file for deduplication
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")

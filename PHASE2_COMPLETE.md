@@ -31,8 +31,8 @@
 - **Rate limiting**: 60s backoff on 429 errors
 - **CLI**: `python -m x_brief.pipeline <config> [--hours N]`
 
-### 4. `configs/steve.json` (1KB)
-- **50 tracked accounts** from steve_following.json
+### 4. `configs/example.json` (1KB)
+- **Sample tracked accounts** from a generic following export
 - **Delivery**: Telegram
 - **Schedule**: Daily
 
@@ -60,14 +60,14 @@ Fixed field access to match existing models:
 ## Next Steps
 
 1. Set environment variable: `export X_BRIEF_BEARER_TOKEN="your_token"`
-2. Run test briefing: `python -m x_brief.pipeline configs/steve.json --hours 24`
+2. Run test briefing: `python -m x_brief.pipeline configs/example.json --hours 24`
 3. Integrate with Telegram delivery (Phase 3)
 
 ## Architecture
 
 ```
 pipeline.py (orchestrator)
-    ├─> config.py (load steve.json)
+    ├─> config.py (load example.json)
     ├─> fetcher.py (XClient API calls)
     ├─> analyzer.py (interests + categorization)
     ├─> curator.py (briefing assembly)

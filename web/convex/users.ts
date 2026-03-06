@@ -1,6 +1,24 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+/**
+ * SECURITY NOTE:
+ * These functions include only minimal guards for open-source/dev usage.
+ * Add full authentication + authorization checks before production deployment.
+ */
+async function requireAuthenticatedRequest(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Unauthorized: authentication required.");
+  }
+}
+
+function ensureNonEmptyId(value: unknown, fieldName: string) {
+  if (!String(value ?? "").trim()) {
+    throw new Error(`Invalid ${fieldName}: value is required.`);
+  }
+}
+
 export const createUser = mutation({
   args: {
     email: v.string(),
@@ -8,6 +26,8 @@ export const createUser = mutation({
     plan: v.optional(v.union(v.literal("free"), v.literal("pro"))),
   },
   handler: async (ctx, args) => {
+    await requireAuthenticatedRequest(ctx);
+
     // Check if user already exists
     const existing = await ctx.db
       .query("users")
@@ -53,6 +73,9 @@ export const updatePlan = mutation({
     stripeCustomerId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAuthenticatedRequest(ctx);
+    ensureNonEmptyId(args.userId, "userId");
+
     await ctx.db.patch(args.userId, {
       plan: args.plan,
       ...(args.stripeCustomerId && { stripeCustomerId: args.stripeCustomerId }),

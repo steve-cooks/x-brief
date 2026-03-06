@@ -20,3 +20,5 @@ secrets/
 *.key
 *.pem
 !.env.example
+configs/*.json
+!configs/example.json

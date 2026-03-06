@@ -41,11 +41,11 @@ X Brief is a two-part project: a Python pipeline that fetches/curates X (Twitter
 - **CSS `!important` outside `@layer` is UNRELIABLE** for overriding Radix component defaults in Tailwind v4.
 - **Service: `systemctl --user status x-brief-web.service`**. Dev server on port 3000.
 - **Pipeline runs via cron** (4x daily via `x-brief-pipeline` cron) — data lives in `data/latest-briefing.json`.
-- **Scan files come from `~/projects/second-brain/timeline_scans/`** (Rabbit's X timeline scans).
+- **Scan files come from `./timeline_scans/` by default** (or `X_BRIEF_SCAN_DIR`, e.g. `~/your-scan-dir/timeline_scans/`) from your browser agent.
 - `x-brief brief` currently re-fetches recent posts (demo path) instead of being purely cache-driven.
-- `web/src/app/api/briefing/route.ts` has a machine-specific fallback path: `/home/cluvis/projects/x-brief/data/latest-briefing.json`.
+- `web/src/app/api/briefing/route.ts` reads `X_BRIEF_DATA_DIR` first, then falls back to repo-relative `data/latest-briefing.json`.
 - Sticky tabs can break if an ancestor uses `overflow: hidden`; bug notes are in `TAB_NAV_BUG.md`.
-- Scan-mode pipeline default input is outside repo: `~/projects/second-brain/timeline_scans/`.
+- Scan-mode pipeline default input is now `./timeline_scans/` (override with `X_BRIEF_SCAN_DIR`).
 - `fetch_following.py` contains a hardcoded bearer token string; treat as sensitive and rotate/remove.
 - Curator thresholds are opinionated and can hide low-engagement but important posts.
 - `enrichment.py` only enriches up to `MAX_POSTS_PER_RUN = 30` and sleeps 1s/request.
@@ -63,7 +63,7 @@ X Brief is a two-part project: a Python pipeline that fetches/curates X (Twitter
 - Set required env: `export X_BRIEF_BEARER_TOKEN="..."`
 - Fetch tracked accounts: `x-brief fetch --config config.json --hours 24`
 - Run full pipeline: `x-brief run --config config.json --hours 24`
-- Run scan pipeline directly: `python -m x_brief.pipeline configs/steve.json --from-scans --hours 48`
+- Run scan pipeline directly: `python -m x_brief.pipeline configs/example.json --from-scans --hours 48`
 - Optional enrichment pass: `python -m x_brief.enrichment data/latest-briefing.json`
 - Start web app: `cd web && npm install && npm run dev`
 - Build web app: `cd web && npm run build`
@@ -76,7 +76,7 @@ X Brief is a two-part project: a Python pipeline that fetches/curates X (Twitter
 - `ARCHITECTURE.md`: product/phase intent and data flow.
 - `pyproject.toml`: Python package metadata, deps, CLI entrypoint.
 - `configs/example.json`: baseline user config shape.
-- `configs/steve.json`: real tracked-account config target.
+- `configs/example.json`: baseline tracked-account config template.
 - `x_brief/cli.py`: operational commands (`init/fetch/brief/accounts/run`).
 - `x_brief/pipeline.py`: end-to-end orchestration and JSON export.
 - `x_brief/fetcher.py`: X API v2 client, pagination/rate-limit handling.
@@ -84,7 +84,7 @@ X Brief is a two-part project: a Python pipeline that fetches/curates X (Twitter
 - `x_brief/scorer.py`: dedup + scoring and viral multipliers.
 - `x_brief/analyzer.py`: interest inference, categorization, query generation.
 - `x_brief/curator.py`: section assembly and selection policy.
-- `x_brief/scan_reader.py`: Rabbit scan JSON ingestion/parsing.
+- `x_brief/scan_reader.py`: your browser agent scan JSON ingestion/parsing.
 - `x_brief/enrichment.py`: syndication-based rich media/quote/link-card augmentation.
 - `x_brief/dedup.py`: cross-brief history dedup store.
 - `web/src/app/page.tsx`: frontend entrypoint.

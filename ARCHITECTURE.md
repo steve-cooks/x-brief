@@ -124,7 +124,7 @@ Fetch (X API) → Deduplicate → Score → Analyze (AI) → Curate → Format �
 - [ ] AI analysis & curation (Claude via sub-agent)
 - [ ] Markdown briefing formatter
 - [ ] CLI tool: `x-brief generate --config config.json`
-- [ ] Test with Steve's 50 accounts
+- [ ] Test with a sample set of 50 tracked accounts
 
 ### Phase 2: OpenClaw Integration
 - [ ] Package as OpenClaw skill
@@ -145,7 +145,7 @@ Fetch (X API) → Deduplicate → Score → Analyze (AI) → Curate → Format �
 - [ ] Thread reconstruction & summarization
 - [ ] Cross-platform (Bluesky, Mastodon, LinkedIn)
 
-## What We Need from Steve
+## What We Need from You
 1. **X API key** — Create app at https://console.x.com, get Bearer Token
    - App permissions: Read (that's all we need)
    - We need: API Key, API Secret, Bearer Token

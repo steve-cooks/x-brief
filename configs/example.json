@@ -1,27 +1,24 @@
 {
-  "x_handle": "yourusername",
+  "x_handle": "your_x_handle",
   "tracked_accounts": [
-    "elonmusk",
     "openai",
     "AnthropicAI",
-    "steipete",
-    "naval",
-    "balajis",
-    "pmarca",
-    "sama"
+    "vercel",
+    "sama",
+    "sundarpichai",
+    "satyanadella",
+    "karpathy",
+    "naval"
   ],
-  "interests": [
+  "recent_interests": [
     "AI",
-    "technology",
-    "startups",
-    "crypto",
-    "web3",
-    "programming"
+    "Machine Learning",
+    "Startups",
+    "Software Engineering",
+    "Design"
   ],
   "delivery": {
-    "type": "telegram",
-    "enabled": true,
-    "telegram_chat_id": "YOUR_CHAT_ID"
+    "type": "telegram"
   },
   "briefing_schedule": "daily"
 }

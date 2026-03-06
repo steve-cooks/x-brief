@@ -1,6 +1,24 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+/**
+ * SECURITY NOTE:
+ * These functions include only minimal guards for open-source/dev usage.
+ * Add full authentication + authorization checks before production deployment.
+ */
+async function requireAuthenticatedRequest(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Unauthorized: authentication required.");
+  }
+}
+
+function ensureNonEmptyId(value: unknown, fieldName: string) {
+  if (!String(value ?? "").trim()) {
+    throw new Error(`Invalid ${fieldName}: value is required.`);
+  }
+}
+
 export const getPreferences = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -23,6 +41,9 @@ export const updatePreferences = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    await requireAuthenticatedRequest(ctx);
+    ensureNonEmptyId(args.userId, "userId");
+
     const existing = await ctx.db
       .query("userPreferences")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -57,6 +78,9 @@ export const initializePreferences = mutation({
     deliveryMethod: v.union(v.literal("web"), v.literal("email"), v.literal("both")),
   },
   handler: async (ctx, args) => {
+    await requireAuthenticatedRequest(ctx);
+    ensureNonEmptyId(args.userId, "userId");
+
     // Check if preferences already exist
     const existing = await ctx.db
       .query("userPreferences")
