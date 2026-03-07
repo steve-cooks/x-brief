@@ -1,6 +1,9 @@
 # X Brief
 
-X Brief is a self-hosted, AI-powered X/Twitter feed curator that runs on your own machine. It can scan your timeline through browser automation (no X API key required), process posts through a Python curation pipeline, and present a polished briefing in a Next.js web app so you can catch up quickly on what matters.
+X Brief is a self-hosted, AI-powered X/Twitter feed curator. **No API keys required.** It uses browser automation (via an OpenClaw agent) to scan your X timeline, curates and scores posts through a Python pipeline, and displays them in a clean Next.js web app, all running locally on your own machine.
+
+- `No API keys required` (browser scan mode)
+- `No dependencies on external services` (browser scan mode)
 
 ## Getting Started
 
@@ -46,9 +49,10 @@ Architecture overview:
 
 - Python `3.10+`
 - Node.js `18+`
-- One of:
-  - OpenClaw installed (for browser scan mode, no API key)
-  - X API bearer token (for API mode)
+- OpenClaw installed (for browser scan mode)
+
+Optional for API mode only:
+- X API bearer token
 
 ## Quick Start
 
@@ -60,9 +64,6 @@ cd x-brief
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-
-# Environment config
-cp .env.example .env
 
 # Generate/update briefing data
 x-brief brief --config configs/example.json --hours 24 --format markdown
@@ -77,7 +78,7 @@ Open `http://localhost:3000`.
 
 ## Configuration
 
-Environment variables are read from `.env`:
+For browser scan mode, no `.env` file is required. Environment variables are optional overrides:
 
 | Variable | Required | Description |
 |---|---|---|
@@ -92,7 +93,8 @@ Environment variables are read from `.env`:
 ### Browser Scan Mode (No API Key)
 
 - Uses OpenClaw browser automation to scan your X timeline
-- Does not require an X API key
+- No API keys needed
+- No `.env` file needed
 - Best for local, self-hosted use when you already run OpenClaw
 
 ### API Mode (Bearer Token Required)

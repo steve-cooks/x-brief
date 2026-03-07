@@ -38,20 +38,6 @@ pip install -e .
 cp configs/example.json configs/my-config.json
 ```
 
-5. Create `.env` from `.env.example` and fill values you need.
-
-```bash
-cp .env.example .env
-```
-
-6. Load env vars into your shell (this project does not auto-load `.env`).
-
-```bash
-set -a
-source .env
-set +a
-```
-
 ## Configuration
 
 ### `configs/my-config.json`
@@ -81,17 +67,13 @@ Notes:
 - Use `recent_interests` (not `interests`) in current code.
 - In scan mode, `tracked_accounts` is not used for collection, but keeping it populated is still useful context.
 
-### `.env`
+For browser scan mode, no `.env` file is required. All env vars are optional overrides.
 
-Core vars:
+Core optional overrides:
 
-- `X_BRIEF_BEARER_TOKEN` (required for API mode):
-  - Example: `X_BRIEF_BEARER_TOKEN=AAAAAAAAAAAAAAAAAAAAA...`
-- `X_BRIEF_ANTHROPIC_KEY` (optional, currently not required for scan pipeline):
-  - Example: `X_BRIEF_ANTHROPIC_KEY=sk-ant-api03-...`
-- `X_BRIEF_SCAN_DIR` (optional, scan-mode input folder; default `./timeline_scans/`):
+- `X_BRIEF_SCAN_DIR` (scan-mode input folder; default `./timeline_scans/`):
   - Example: `X_BRIEF_SCAN_DIR=/home/you/projects/x-brief/timeline_scans`
-- `X_BRIEF_DATA_DIR` (optional, mainly for web API route override):
+- `X_BRIEF_DATA_DIR` (mainly for web API route override):
   - Example: `X_BRIEF_DATA_DIR=/home/you/projects/x-brief/data`
 
 Optional vars used by helper script `fetch_following.py`:
@@ -110,6 +92,8 @@ Optional web env vars in `web/.env.example` (only needed if you use Convex):
 ## Mode 1: Browser Scan Mode (Recommended — No API Key)
 
 This is the main mode.
+
+No API keys needed. No `.env` file needed.
 
 ### How the scan works
 
@@ -313,14 +297,29 @@ Useful flags:
 This mode requires an X developer account and bearer token.
 
 1. Create an X developer app and generate a bearer token from the developer portal.
-2. Export your token.
+2. Create `.env` from `.env.example` and set your bearer token.
 
 ```bash
-export X_BRIEF_BEARER_TOKEN="YOUR_BEARER_TOKEN"
+cp .env.example .env
 ```
 
-3. Ensure `configs/my-config.json` has `tracked_accounts` populated.
-4. Run full pipeline:
+`.env` for API mode:
+
+- `X_BRIEF_BEARER_TOKEN` (required):
+  - Example: `X_BRIEF_BEARER_TOKEN=AAAAAAAAAAAAAAAAAAAAA...`
+- `X_BRIEF_SCAN_DIR` (optional override)
+- `X_BRIEF_DATA_DIR` (optional override)
+
+3. Load env vars into your shell (this project does not auto-load `.env`).
+
+```bash
+set -a
+source .env
+set +a
+```
+
+4. Ensure `configs/my-config.json` has `tracked_accounts` populated.
+5. Run full pipeline:
 
 ```bash
 x-brief run --config configs/my-config.json --hours 24
