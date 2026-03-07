@@ -57,7 +57,7 @@ Optional for API mode only:
 ## Quick Start
 
 ```bash
-git clone https://github.com/<your-org>/x-brief.git
+git clone https://github.com/steve-cooks/x-brief.git
 cd x-brief
 
 # Python setup

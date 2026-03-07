@@ -3,9 +3,9 @@
 Date: 2026-03-06
 
 ## Security and Secrets
-- Removed hardcoded bearer token from `fetch_following.py`.
+- Removed hardcoded bearer token from `scripts/fetch_following.py`.
 - Added env-based token loading: `X_BRIEF_BEARER_TOKEN`.
-- Added fail-fast check in `fetch_following.py` when token is missing.
+- Added fail-fast check in `scripts/fetch_following.py` when token is missing.
 - Added basic payload size limit (50KB) for `web/src/app/api/analytics/route.ts`.
 - Added production hardening warning comment to analytics endpoint.
 

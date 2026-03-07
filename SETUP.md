@@ -15,7 +15,7 @@ This guide is the full end-to-end setup for running X Brief from scratch in eith
 1. Clone the repo.
 
 ```bash
-git clone https://github.com/<your-org>/x-brief.git
+git clone https://github.com/steve-cooks/x-brief.git
 cd x-brief
 ```
 
@@ -76,18 +76,15 @@ Core optional overrides:
 - `X_BRIEF_DATA_DIR` (mainly for web API route override):
   - Example: `X_BRIEF_DATA_DIR=/home/you/projects/x-brief/data`
 
-Optional vars used by helper script `fetch_following.py`:
+Optional vars used by helper script `scripts/fetch_following.py`:
 
 - `X_BRIEF_USERNAME`
 - `X_BRIEF_CONFIG_PATH`
 - `X_BRIEF_FOLLOWING_OUTPUT`
 
-Optional web env vars in `web/.env.example` (only needed if you use Convex):
+Optional web env var in `web/.env.example`:
 
-- `CONVEX_SELF_HOSTED_URL`
-- `CONVEX_SELF_HOSTED_ADMIN_KEY`
-- `NEXT_PUBLIC_CONVEX_URL`
-- `NEXT_PUBLIC_CONVEX_SITE_URL`
+- `X_BRIEF_DATA_DIR`
 
 ## Mode 1: Browser Scan Mode (Recommended — No API Key)
 
