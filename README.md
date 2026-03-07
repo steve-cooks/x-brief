@@ -2,6 +2,11 @@
 
 X Brief is a self-hosted, AI-powered X/Twitter feed curator that runs on your own machine. It can scan your timeline through browser automation (no X API key required), process posts through a Python curation pipeline, and present a polished briefing in a Next.js web app so you can catch up quickly on what matters.
 
+## Getting Started
+
+For full setup from zero (scan mode, API mode, scan JSON format, cron automation, and web/service deployment), use [SETUP.md](./SETUP.md).  
+If you are new to this repository, start there before using the shorter README quick start below.
+
 ## Screenshots / Demo
 
 The web UI presents an X-style tabbed briefing with three sections:
