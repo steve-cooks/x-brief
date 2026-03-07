@@ -204,11 +204,8 @@ async def _brief(config_path: str, hours: int, output_format: str, output_file: 
     end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(hours=hours)
     
-    # For now, create a simple briefing from cache
-    # TODO: This should use the AI analyzer/curator modules (Phase 2)
-    
-    # Fetch posts from cache and score them
-    # This is a simplified version - in reality we'd query the cache by time range
+    # This command uses a lightweight API-mode path that re-fetches recent posts,
+    # deduplicates them, and ranks the top items for formatted output.
     async with XClient(system_config.x_api_bearer_token) as client:
         all_posts = []
         all_users = []
