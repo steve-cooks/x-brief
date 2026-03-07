@@ -70,7 +70,7 @@ Fetch (X API) → Deduplicate → Score → Analyze (AI) → Curate → Format �
 - Install as OpenClaw skill
 - Runs as cron job or on-demand
 - Delivers briefing directly in chat (Telegram, Discord, etc.)
-- Can be queried conversationally: "what's happening in tech?" "what did @steipete post today?"
+- Can be queried conversationally: "what's happening in tech?" "what did your account post today?"
 - Deep integration with agent memory/second brain
 
 ### 2. Standalone Mode (Email/Webhook)
@@ -129,7 +129,7 @@ Fetch (X API) → Deduplicate → Score → Analyze (AI) → Curate → Format �
 ### Phase 2: OpenClaw Integration
 - [ ] Package as OpenClaw skill
 - [ ] Cron job for daily briefing
-- [ ] Conversational queries ("what's @steipete up to?")
+- [ ] Conversational queries ("what's your account up to?")
 - [ ] Second brain integration (ingest interesting posts)
 
 ### Phase 3: Standalone & SaaS

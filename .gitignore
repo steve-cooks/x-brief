@@ -22,3 +22,17 @@ secrets/
 !.env.example
 configs/*.json
 !configs/example.json
+.agents/
+.claude/
+skills/
+configs/steve.json
+DESIGN.md
+DEFECT-*.md
+PHASE2_COMPLETE.md
+CONTEXT.md
+SAAS_ANALYSIS.md
+OPENSOURCE_*.md
+*.jpg
+*.jpeg
+*.png
+!web/public/

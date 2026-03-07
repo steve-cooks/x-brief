@@ -1,1 +1,0 @@
-/home/cluvis/.openclaw/workspace/DESIGN.md

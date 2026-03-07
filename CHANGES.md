@@ -21,7 +21,7 @@ Date: 2026-03-06
 
 ## Config and Env Templates
 - Replaced `configs/example.json` content with a generic open-source-safe example.
-- Kept `configs/steve.json` in place for now (not deleted).
+- Kept user-specific local config files in place for now (not deleted).
 - Added root `.env.example` with documented variables:
   - `X_BRIEF_BEARER_TOKEN`
   - `X_BRIEF_ANTHROPIC_KEY`

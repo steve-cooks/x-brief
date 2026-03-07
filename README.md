@@ -1,181 +1,120 @@
-# 𝕏 Brief
+# X Brief
 
-AI-powered X/Twitter timeline curator and briefing generator.
+X Brief is a self-hosted, AI-powered X/Twitter feed curator that runs on your own machine. It can scan your timeline through browser automation (no X API key required), process posts through a Python curation pipeline, and present a polished briefing in a Next.js web app so you can catch up quickly on what matters.
 
-## What Was Built (Phase 1 - Core Engine)
+## Screenshots / Demo
 
-### ✅ Complete Files
+The web UI presents an X-style tabbed briefing with three sections:
+- `Top Stories`
+- `Articles`
+- `Worth a Look`
 
-1. **pyproject.toml** - Python package configuration
-   - Package name: `x-brief`
-   - Dependencies: httpx, sqlite-utils, pydantic, click, jinja2
-   - CLI entry point: `x-brief`
+To capture screenshots for this README, run the app locally and open `http://localhost:3000` after generating a briefing.
 
-2. **x_brief/__init__.py** - Package initialization (v0.1.0)
+## How It Works
 
-3. **x_brief/models.py** - Pydantic data models
-   - `Post` - Tweet/post with metrics, author info, references
-   - `User` - X/Twitter user profile
-   - `PostMetrics` - Engagement metrics (likes, reposts, replies, views, quotes)
-   - `BriefingItem` - Single item in briefing with post + summary
-   - `BriefingSection` - Section with title, emoji, items
-   - `Briefing` - Complete briefing document
-   - `UserConfig` - User configuration
+X Brief follows a simple local data flow:
 
-4. **x_brief/config.py** - Configuration management
-   - `XBriefConfig` - System config (API keys, cache paths)
-   - Environment variable support (X_BRIEF_BEARER_TOKEN, X_BRIEF_ANTHROPIC_KEY)
-   - Load/save user config from JSON
+```text
+Browser Agent (OpenClaw) or X API
+            |
+            v
+      scan JSON input
+            |
+            v
+ Python pipeline (curate/score/dedup)
+            |
+            v
+   data/latest-briefing.json
+            |
+            v
+       Next.js frontend
+```
 
-5. **x_brief/fetcher.py** - X API v2 async client
-   - `XClient` - Async HTTP client with bearer token auth
-   - Rate limit handling (checks headers, raises RateLimitError)
-   - `get_user_by_username()` - Fetch user by username
-   - `get_users_by_usernames()` - Batch fetch users (max 100)
-   - `get_user_tweets()` - Fetch user timeline with pagination
-   - `search_tweets()` - Search recent tweets with pagination
-   - Proper X API v2 response parsing (data + includes + expansions)
+Architecture overview:
+- Input layer: Browser scan mode (OpenClaw automation) or API mode (X bearer token)
+- Processing layer: Python pipeline deduplicates, scores, and organizes posts by relevance
+- Output layer: `latest-briefing.json` drives the web frontend
+- Scheduling layer: Cron can run scans every 4 hours for a continuously fresh briefing
 
-6. **x_brief/cache.py** - SQLite caching layer
-   - `Cache` - SQLite database for posts and users
-   - TTL-based expiry (posts: 48h, users: 7d)
-   - `cache_post()`, `cache_posts()` - Cache operations
-   - `get_post()`, `get_user_by_id()`, `get_user_by_username()` - Retrieval
-   - `get_or_fetch_user_id()` - Cache-first user lookup helper
-   - `cleanup_expired()` - Remove old entries
+## Requirements
 
-7. **x_brief/scorer.py** - Content scoring and deduplication
-   - `deduplicate()` - Remove exact duplicates, group reposts/quotes
-   - `score_post()` - Engagement velocity scoring formula:
-     - `(views*0.1 + likes*1 + reposts*3 + replies*2 + quotes*4) / followers`
-     - Boosts for high absolute engagement
-   - `rank_posts()` - Sort posts by score
+- Python `3.10+`
+- Node.js `18+`
+- One of:
+  - OpenClaw installed (for browser scan mode, no API key)
+  - X API bearer token (for API mode)
 
-8. **x_brief/formatter.py** - Output formatting
-   - `format_markdown()` - Telegram-friendly markdown
-   - `format_html()` - Email-ready HTML with styling
-   - `format_plain()` - Plain text output
-   - Jinja2 templates with post links (https://x.com/{username}/status/{id})
-   - Includes briefing stats at bottom
-
-9. **x_brief/cli.py** - Click CLI
-   - `x-brief init` - Create example config.json
-   - `x-brief fetch --config config.json --hours 24` - Fetch and cache posts
-   - `x-brief brief --config config.json --hours 24 --format markdown` - Generate briefing
-   - `x-brief accounts --config config.json` - List tracked accounts
-   - All commands properly async with error handling
-
-10. **configs/example.json** - Example configuration
-    - Sample tracked accounts (elonmusk, openai, etc.)
-    - Sample interests (AI, technology, etc.)
-    - Delivery configuration structure
-
-## Installation
+## Quick Start
 
 ```bash
-cd ~/projects/x-brief
+git clone https://github.com/<your-org>/x-brief.git
+cd x-brief
+
+# Python setup
+python -m venv .venv
+source .venv/bin/activate
 pip install -e .
+
+# Environment config
+cp .env.example .env
+
+# Generate/update briefing data
+x-brief brief --config configs/example.json --hours 24 --format markdown
+
+# Frontend setup
+cd web
+npm install
+npm run dev
 ```
 
-## Usage
+Open `http://localhost:3000`.
 
-### 1. Set up environment
+## Configuration
+
+Environment variables are read from `.env`:
+
+| Variable | Required | Description |
+|---|---|---|
+| `X_BRIEF_BEARER_TOKEN` | No* | X API bearer token (required only for API mode) |
+| `X_BRIEF_SCAN_DIR` | No | Directory containing browser scan JSON files |
+| `X_BRIEF_DATA_DIR` | No | Directory where briefing outputs are written/read |
+
+`*` Optional in browser scan mode.
+
+## Modes
+
+### Browser Scan Mode (No API Key)
+
+- Uses OpenClaw browser automation to scan your X timeline
+- Does not require an X API key
+- Best for local, self-hosted use when you already run OpenClaw
+
+### API Mode (Bearer Token Required)
+
+- Pulls data from X API endpoints
+- Requires `X_BRIEF_BEARER_TOKEN`
+- Useful when you want a direct API-driven workflow
+
+## Running the Web Frontend
+
+From the `web/` directory:
 
 ```bash
-export X_BRIEF_BEARER_TOKEN="your_twitter_bearer_token"
-export X_BRIEF_ANTHROPIC_KEY="your_anthropic_key"  # optional
+npm install
+npm run dev
 ```
 
-### 2. Initialize config
+Then open `http://localhost:3000`.
 
-```bash
-x-brief init --output config.json
-# Edit config.json with your settings
-```
+## Contributing
 
-### 3. Fetch posts
+Contributions are welcome.
 
-```bash
-x-brief fetch --config config.json --hours 24
-```
-
-### 4. Generate briefing
-
-```bash
-x-brief brief --config config.json --hours 24 --format markdown
-```
-
-## Architecture
-
-```
-Fetch (X API) → Cache (SQLite) → Deduplicate → Score → [AI Analyze] → Format → Deliver
-```
-
-### Current Status: ✅ Phase 1 Complete
-
-- ✅ X API v2 client with async, rate limiting, pagination
-- ✅ SQLite caching layer with TTL
-- ✅ Scoring and deduplication
-- ✅ Markdown/HTML formatters
-- ✅ CLI tool for fetch + brief generation
-
-### Phase 2: Not Yet Implemented
-
-- ⏳ **analyzer.py** - AI content analysis (Claude integration)
-- ⏳ **curator.py** - AI-powered content curation and summarization
-- ⏳ **delivery.py** - Delivery backends (Telegram, email, webhook)
-- ⏳ OpenClaw skill integration
-- ⏳ Tests
-
-## Technical Notes
-
-### X API v2 Integration
-- Uses bearer token authentication (no OAuth required)
-- Handles rate limits via response headers
-- Supports pagination with next_token
-- Parses expansions (author_id, referenced_tweets)
-- Fetches tweet fields: id, text, created_at, public_metrics, entities, referenced_tweets, author_id, conversation_id, lang
-- Fetches user fields: id, username, name, description, public_metrics, verified
-
-### Scoring Algorithm
-Posts are scored using engagement velocity normalized by author followers:
-```
-score = (views*0.1 + likes*1 + reposts*3 + replies*2 + quotes*4) / followers
-```
-With boosts for viral content (>1000 likes = 1.5x, >500 reposts = 1.3x)
-
-### Data Models
-All models use Pydantic v2 for validation and serialization. Key models:
-- `Post` - Complete tweet data with metrics and metadata
-- `User` - Author profile with follower count
-- `Briefing` - Structured output with sections and stats
-
-## Next Steps
-
-1. **Implement analyzer.py** - Claude API integration for content analysis
-2. **Implement curator.py** - AI-powered briefing generation
-3. **Add delivery.py** - Telegram, email, webhook delivery
-4. **Package as OpenClaw skill** - Full agent integration
-5. **Add tests** - Unit and integration tests
-
-## Dependencies
-
-- **httpx** - Async HTTP client
-- **sqlite-utils** - SQLite database helpers
-- **pydantic** - Data validation and models
-- **click** - CLI framework
-- **jinja2** - Template engine
+- Open an issue describing the bug or enhancement
+- Submit a focused pull request with clear before/after behavior
+- Include tests or reproduction steps when possible
 
 ## License
 
-MIT
-
-## Project Details
-- **Vision:** SaaS product — no user X credentials needed, uses X API v2 (pay-per-usage)
-- **Two modes:** OpenClaw skill (chat delivery) + Standalone (email newsletter)
-- **Architecture:** ARCHITECTURE.md — 4 phases from MVP to ML personalization
-- **Following export path (example):** `~/your-scan-dir/your_following.json`
-- **Must fetch ALL accounts you follow** — use X API pagination for complete list
-- **UI mimics X's tab layout** — "For You" and "Following" style tabs
-- **Crons:** auto-update OpenClaw (4AM CT / 10:00 UTC)
-- **Claude Code:** v2.1.38, authenticated
+MIT. See [LICENSE](./LICENSE).

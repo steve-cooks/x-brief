@@ -302,7 +302,11 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
             return None
         
         # Extract author info — sanitize "(pinned)" at ingest time
-        author = sanitize_pinned(post_data.get('author', ''))
+        # Support both 'author' (legacy) and 'author_handle' (Rabbit scan format)
+        author = sanitize_pinned(post_data.get('author', '') or post_data.get('author_handle', ''))
+        # If still empty, try to extract from URL
+        if not author:
+            author = extract_username(url)
         author_username = extract_username(author)
         # Also strip (pinned) from username in case it leaked there
         author_username = sanitize_pinned(author_username)
