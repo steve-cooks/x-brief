@@ -12,12 +12,12 @@ If you are new to this repository, start there before using the shorter README q
 
 ## Screenshots / Demo
 
-The web UI presents an X-style tabbed briefing with three sections:
+After generating a briefing, `http://localhost:3000` opens a clean, local web interface that presents the curated feed in three tabs:
 - `Top Stories`
 - `Articles`
 - `Worth a Look`
 
-To capture screenshots for this README, run the app locally and open `http://localhost:3000` after generating a briefing.
+Each section highlights ranked posts with summaries, links, and metadata so you can quickly review the most relevant items from your timeline.
 
 ## How It Works
 
