@@ -76,13 +76,25 @@ interface BriefingData {
   }
 }
 
-const SECTION_DISPLAY: Record<string, { label: string; id: string }> = {
-  "VIRAL 🔥": { label: "Viral 🔥", id: "viral" },
-  "TOP PICKS 📌": { label: "Top Picks", id: "top_picks" },
-  "FOLLOWING 👥": { label: "Following", id: "following" },
+const SECTION_DISPLAY: Record<string, { label: string; id: string; emptyMessage: string }> = {
+  "Can't Miss 🔥": {
+    label: "Can't Miss 🔥",
+    id: "cant_miss",
+    emptyMessage: "Nothing major happened. Go live your life. ✌️",
+  },
+  "For You 📌": {
+    label: "For You",
+    id: "for_you",
+    emptyMessage: "Your timeline is quiet. Check back later.",
+  },
+  "Following 👥": {
+    label: "Following",
+    id: "following",
+    emptyMessage: "Your follows haven't posted much. That's okay.",
+  },
 }
 
-const TAB_ORDER = ["viral", "top_picks", "following"]
+const TAB_ORDER = ["cant_miss", "for_you", "following"]
 
 function formatStat(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -293,7 +305,7 @@ export function BriefingView() {
   )
 
   const availableTabs = useMemo(() => {
-    if (!briefing) return [] as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number }>
+    if (!briefing) return [] as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number; emptyMessage: string }>
 
     const dynamicTabs = briefing.sections
       .map((s) => {
@@ -315,7 +327,7 @@ export function BriefingView() {
           totalCount: s.posts.length,
         }
       })
-      .filter(Boolean) as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number }>
+      .filter(Boolean) as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number; emptyMessage: string }>
 
     return dynamicTabs.sort((a, b) => {
       const ai = TAB_ORDER.indexOf(a.id)
@@ -357,6 +369,9 @@ export function BriefingView() {
           ? `${Math.floor(minutesAgo / 60)}h ago`
           : `${Math.floor(minutesAgo / 1440)}d ago`
 
+  const totalPosts = briefing?.sections.reduce((sum, section) => sum + section.posts.length, 0) ?? 0
+  const readMinutes = Math.ceil(totalPosts / 2)
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
@@ -366,6 +381,8 @@ export function BriefingView() {
               <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight whitespace-nowrap">𝕏 Brief</h1>
               {briefing && (
                 <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span className="text-xs sm:text-[13px] text-muted-foreground whitespace-nowrap">~{readMinutes} min read</span>
+                  <span className="text-xs sm:text-[13px] text-muted-foreground whitespace-nowrap">•</span>
                   <span className="text-xs sm:text-[13px] text-muted-foreground whitespace-nowrap">Updated {relativeTime}</span>
                   {isStale && (
                     <span
@@ -480,7 +497,9 @@ export function BriefingView() {
                   className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
                 >
                   {tab.posts.length === 0 ? (
-                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">No posts match your search.</div>
+                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      {normalizedSearch ? "No posts match your search." : tab.emptyMessage}
+                    </div>
                   ) : (
                     <div>
                       {tab.posts.map((post, index) => {
