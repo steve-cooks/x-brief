@@ -15,8 +15,9 @@ timeline_scans/*.json
   -> x_brief.dedup.filter_already_briefed()
   -> x_brief.curator.curate_briefing()
   -> x_brief.pipeline.export_briefing_json()
-  -> data/latest-briefing.json
+  -> data/latest-briefing.json (+ data/pipeline-status.json)
   -> web/src/app/api/briefing/route.ts
+  -> (optional) web/src/app/api/pipeline-status/route.ts
   -> web/src/components/briefing-view.tsx
 ```
 
@@ -28,7 +29,6 @@ timeline_scans/*.json
 - [`x_brief/dedup.py`](./x_brief/dedup.py): cross-run brief history loading, filtering, saving, and cleanup.
 - [`x_brief/scorer.py`](./x_brief/scorer.py): post deduplication, scoring, and viral thresholds.
 - [`x_brief/curator.py`](./x_brief/curator.py): section assembly for VIRAL, TOP STORIES, YOUR CIRCLE, TRENDING, ARTICLES, and WORTH A LOOK.
-- [`x_brief/formatter.py`](./x_brief/formatter.py): markdown, HTML, and plain-text formatting helpers.
 - [`x_brief/enrichment.py`](./x_brief/enrichment.py): optional syndication enrichment after JSON export.
 - [`x_brief/pipeline.py`](./x_brief/pipeline.py): scan-only orchestration, markdown rendering, and JSON export.
 - [`x_brief/cli.py`](./x_brief/cli.py): scan-only Click entrypoints.
@@ -36,6 +36,7 @@ timeline_scans/*.json
 ## Frontend Modules
 
 - [`web/src/app/api/briefing/route.ts`](./web/src/app/api/briefing/route.ts): reads `latest-briefing.json` from `X_BRIEF_DATA_DIR` or repo-local fallbacks.
+- `web/src/app/api/pipeline-status/route.ts` (recommended): read `pipeline-status.json` so the UI can surface pipeline health without touching the filesystem directly.
 - [`web/src/app/api/media/route.ts`](./web/src/app/api/media/route.ts): media proxy for approved X media hosts.
 - [`web/src/app/page.tsx`](./web/src/app/page.tsx): app entrypoint.
 - [`web/src/components/briefing-view.tsx`](./web/src/components/briefing-view.tsx): tabbed briefing shell, polling, read state, media viewer integration.
@@ -54,12 +55,12 @@ timeline_scans/*.json
 
 ## Output Contract
 
-The shared artifact is `latest-briefing.json` with:
+The shared artifacts are:
 
-- `generated_at`
-- `period_hours`
-- `sections[]`
-- `stats`
+- `latest-briefing.json` with `generated_at`, `period_hours`, `sections[]`, and `stats`
+- `pipeline-status.json` with:
+  - success: `{ "status": "ok", "last_success": "ISO timestamp", "posts_processed": N, "sections": N }`
+  - failure: `{ "status": "error", "error": "description", "last_success": "ISO timestamp|null", "last_attempt": "ISO timestamp" }`
 
 Each section contains `title`, `emoji`, and `posts[]`. Each post includes author fields, metrics, media, quoted-post data when present, `postUrl`, timestamps, and optional enrichment data.
 

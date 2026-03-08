@@ -62,7 +62,7 @@ Field notes:
 No `.env` file is required. The scan-only pipeline supports:
 
 - `X_BRIEF_SCAN_DIR`: input folder for timeline scan JSON. Default: `./timeline_scans/`
-- `X_BRIEF_DATA_DIR`: output folder for `latest-briefing.json` and `brief_history.json`
+- `X_BRIEF_DATA_DIR`: output folder for `latest-briefing.json`, `brief_history.json`, and `pipeline-status.json`
 
 Example:
 
@@ -135,7 +135,8 @@ What happens:
 3. The curator builds ranked sections.
 4. Markdown is printed to stdout.
 5. `latest-briefing.json` is written for the frontend.
-6. `brief_history.json` is updated when dedup is active.
+6. `pipeline-status.json` is updated with `status: ok` (or `status: error` + details on failures).
+7. `brief_history.json` is updated when dedup is active.
 
 ## 6. Run The Web Frontend
 
@@ -160,6 +161,8 @@ The frontend reads:
 
 1. `${X_BRIEF_DATA_DIR}/latest-briefing.json` when `X_BRIEF_DATA_DIR` is set.
 2. Otherwise `../data/latest-briefing.json`.
+
+Pipeline health is available in `${X_BRIEF_DATA_DIR}/pipeline-status.json` (or `../data/pipeline-status.json` by default). If you want a frontend health badge, add an API route such as `web/src/app/api/pipeline-status/route.ts` that returns this file.
 
 ## 7. Automate Scan + Pipeline
 

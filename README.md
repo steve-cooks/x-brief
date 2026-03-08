@@ -1,6 +1,6 @@
 # X Brief
 
-X Brief is a self-hosted, scan-only X/Twitter briefing generator. It reads browser timeline scan JSON, curates and scores posts locally, writes `data/latest-briefing.json`, and serves that result through the included Next.js frontend. No API keys are required.
+X Brief is a self-hosted, scan-only X/Twitter briefing generator. It reads browser timeline scan JSON, curates and scores posts locally, writes `data/latest-briefing.json`, tracks pipeline health in `data/pipeline-status.json`, and serves results through the included Next.js frontend. No API keys are required.
 
 ![X Brief Screenshot](docs/images/screenshot.jpg)
 
@@ -16,7 +16,7 @@ Browser agent / exported timeline scans
     Python pipeline (parse/score/curate)
                 |
                 v
-      data/latest-briefing.json
+      data/latest-briefing.json + data/pipeline-status.json
                 |
                 v
            Next.js frontend
@@ -91,6 +91,8 @@ npm run dev
 ```
 
 The frontend reads `latest-briefing.json` from `X_BRIEF_DATA_DIR` when set, otherwise from the repo-local `data/` directory.
+
+Pipeline health is written to `pipeline-status.json` in the same data directory. A companion API route (for example `web/src/app/api/pipeline-status/route.ts`) can read this file so the UI can display scan/pipeline health.
 
 ## More Detail
 
