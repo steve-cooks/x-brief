@@ -488,8 +488,11 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
             bookmarks=bookmarks,
         )
         
-        # Extract media
+        # Extract and clean text — remove scanner-injected alt-text brackets
+        # e.g. "[screenshot shows user interface...]", "[quoting user's post about...]", "[image]"
         text = post_data.get('text', '')
+        text = re.sub(r'\[(?:screenshot|image|photo|video|gif|quoting|quote|Video post)[^\]]*\]', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\s{2,}', ' ', text).strip()
         media_items = extract_media_from_post(post_data, text)
         
         # Extract quoted tweet
