@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 
+from x_brief import dedup
 from x_brief.dedup import cleanup_history, filter_already_briefed, load_brief_history, save_brief_history
 from x_brief.models import Post, PostMetrics
 
@@ -54,3 +55,41 @@ def test_cleanup_history_prunes_entries_older_than_cutoff() -> None:
 
     assert set(cleaned["posts"]) == {"fresh"}
     assert "last_cleanup" in cleaned
+
+
+def test_save_brief_history_skips_cleanup_when_last_cleanup_recent(tmp_path, monkeypatch) -> None:
+    history_path = tmp_path / "brief-history.json"
+    history = {
+        "posts": {},
+        "last_cleanup": (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat(),
+    }
+
+    calls: list[bool] = []
+
+    def fail_if_called(*args, **kwargs):
+        calls.append(True)
+        return history
+
+    monkeypatch.setattr(dedup, "cleanup_history", fail_if_called)
+    save_brief_history(str(history_path), history, [make_post("3", author_username="charlie")])
+
+    assert calls == []
+
+
+def test_save_brief_history_runs_cleanup_when_last_cleanup_stale(tmp_path, monkeypatch) -> None:
+    history_path = tmp_path / "brief-history.json"
+    history = {
+        "posts": {},
+        "last_cleanup": (datetime.now(timezone.utc) - timedelta(hours=30)).isoformat(),
+    }
+
+    calls: list[bool] = []
+
+    def mark_called(current_history, max_age_hours=168):
+        calls.append(True)
+        return current_history
+
+    monkeypatch.setattr(dedup, "cleanup_history", mark_called)
+    save_brief_history(str(history_path), history, [make_post("4", author_username="dana")])
+
+    assert calls == [True]

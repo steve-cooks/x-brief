@@ -56,6 +56,23 @@ def filter_already_briefed(posts: list[Post], history: dict) -> list[Post]:
     return new_posts
 
 
+def _should_cleanup(history: dict, min_interval_hours: int = 24) -> bool:
+    """Return True when history cleanup should run based on last_cleanup."""
+    last_cleanup_raw = history.get("last_cleanup")
+    if not last_cleanup_raw:
+        return True
+
+    try:
+        last_cleanup_dt = datetime.fromisoformat(last_cleanup_raw.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return True
+
+    if last_cleanup_dt.tzinfo is None:
+        last_cleanup_dt = last_cleanup_dt.replace(tzinfo=timezone.utc)
+
+    return datetime.now(timezone.utc) - last_cleanup_dt > timedelta(hours=min_interval_hours)
+
+
 def save_brief_history(history_path: str, history: dict, new_posts: list[Post]) -> None:
     """
     Save updated brief history with new posts.
@@ -68,6 +85,10 @@ def save_brief_history(history_path: str, history: dict, new_posts: list[Post]) 
     path = Path(history_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
     
+    # Cleanup history at most once every 24h
+    if _should_cleanup(history, min_interval_hours=24):
+        history = cleanup_history(history)
+
     # Add new posts to history
     now = datetime.now(timezone.utc).isoformat()
     for post in new_posts:
