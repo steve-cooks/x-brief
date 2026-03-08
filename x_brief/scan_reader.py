@@ -77,8 +77,9 @@ KNOWN_VERIFIED_ACCOUNTS: dict[str, str] = {
 # Keep clean lowercase usernames only
 KNOWN_VERIFIED_ACCOUNTS = {k.lower().strip(): v for k, v in KNOWN_VERIFIED_ACCOUNTS.items()}
 
-ARTICLE_URL_RE = re.compile(r'https?://(?:www\.)?(?:x|twitter)\.com/[^/\s]+/article/[A-Za-z0-9_-]+', re.IGNORECASE)
+ARTICLE_URL_RE = re.compile(r'(?:https?://)?(?:www\.)?(?:x|twitter)\.com/[^/\s]+/article/[A-Za-z0-9_-]+', re.IGNORECASE)
 THREAD_MARKER_RE = re.compile(r'(?:\b\d+\s*/\s*\d+\b|\bthread\b|🧵)', re.IGNORECASE)
+NUMBERED_LIST_MARKER_RE = re.compile(r'^\s*(?:\d+[\.)]|[ivxlcdm]+[\.)])\s+.+', re.IGNORECASE | re.MULTILINE)
 
 
 def extract_post_id(url: str) -> Optional[str]:
@@ -214,12 +215,39 @@ def normalize_source(value: object) -> Optional[str]:
     return None
 
 
+def extract_urls_from_text(text: str) -> list[str]:
+    """Extract URLs, including bare x.com/twitter.com links without scheme."""
+    if not text:
+        return []
+
+    raw_urls = re.findall(r'(?:https?://|www\.|(?:x|twitter)\.com/)\S+', text)
+    cleaned: list[str] = []
+    for url in raw_urls:
+        trimmed = url.rstrip('.,!?:;)]\"\'')
+        if not trimmed:
+            continue
+        normalized = trimmed
+        if normalized.startswith("www."):
+            normalized = f"https://{normalized}"
+        elif normalized.startswith("x.com/") or normalized.startswith("twitter.com/"):
+            normalized = f"https://{normalized}"
+        cleaned.append(normalized)
+    return cleaned
+
+
 def detect_article_url(post_url: str, urls: list[str]) -> Optional[str]:
     """Find first X article URL in post or linked URLs."""
     candidates = [post_url, *urls]
     for candidate in candidates:
-        if candidate and ARTICLE_URL_RE.search(candidate):
-            return candidate
+        if not candidate:
+            continue
+        match = ARTICLE_URL_RE.search(candidate)
+        if not match:
+            continue
+        matched_url = match.group(0)
+        if matched_url.startswith("http://") or matched_url.startswith("https://"):
+            return matched_url
+        return f"https://{matched_url}"
     return None
 
 
@@ -232,6 +260,13 @@ def build_post_url(post: Post) -> str:
     return f"https://x.com/{post.author_username}/status/{post.id}"
 
 
+def _has_thread_markers(post: Post) -> bool:
+    return bool(
+        THREAD_MARKER_RE.search(post.text)
+        or NUMBERED_LIST_MARKER_RE.search(post.text)
+    )
+
+
 def _thread_connected(prev: Post, cur: Post) -> bool:
     """Heuristic for adjacent posts likely being part of same thread."""
     if prev.author_id != cur.author_id:
@@ -241,14 +276,10 @@ def _thread_connected(prev: Post, cur: Post) -> bool:
         return True
 
     age_diff_minutes = abs((prev.created_at - cur.created_at).total_seconds()) / 60
-    if age_diff_minutes > 90:
+    if age_diff_minutes > 5:
         return False
 
-    if THREAD_MARKER_RE.search(prev.text) or THREAD_MARKER_RE.search(cur.text):
-        return True
-
-    # Fallback: same author + near-adjacent + both substantive text
-    return len(prev.text.strip()) > 40 and len(cur.text.strip()) > 40
+    return _has_thread_markers(prev) or _has_thread_markers(cur)
 
 
 def annotate_threads(posts: list[Post]) -> None:
@@ -459,11 +490,18 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         quoted_post_id = quoted_post.id if quoted_post else None
         
         # Extract URLs from text (plus explicit URL fields if present)
-        urls = re.findall(r'https?://\S+', text)
+        urls = extract_urls_from_text(text)
         explicit_urls = post_data.get('urls') if isinstance(post_data.get('urls'), list) else []
         for u in explicit_urls:
-            if isinstance(u, str) and u not in urls:
-                urls.append(u)
+            if not isinstance(u, str):
+                continue
+            normalized_url = u
+            if normalized_url.startswith("www."):
+                normalized_url = f"https://{normalized_url}"
+            elif normalized_url.startswith("x.com/") or normalized_url.startswith("twitter.com/"):
+                normalized_url = f"https://{normalized_url}"
+            if normalized_url not in urls:
+                urls.append(normalized_url)
 
         # Parse posted_at for accurate post time
         posted_at_str = post_data.get('posted_at') or post_data.get('time') or ''
@@ -472,6 +510,23 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         source = normalize_source(post_data.get('source'))
         article_url = detect_article_url(url, urls)
         is_article = article_url is not None
+
+        raw_conversation_id = (
+            post_data.get('conversation_id')
+            or post_data.get('conversationId')
+            or post_data.get('thread_id')
+            or post_data.get('threadId')
+        )
+        conversation_id = str(raw_conversation_id) if raw_conversation_id else None
+
+        explicit_thread_flag = bool(
+            post_data.get('is_thread')
+            or post_data.get('isThread')
+            or post_data.get('threaded')
+            or post_data.get('thread')
+        )
+        if explicit_thread_flag and not conversation_id:
+            conversation_id = f"explicit-thread:{author_username}"
 
         # Create Post object
         post = Post(
@@ -492,7 +547,7 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
             is_quote=is_quote,
             quoted_post_id=quoted_post_id,
             quoted_post=quoted_post,
-            conversation_id=post_data.get('conversation_id') or post_data.get('conversationId'),
+            conversation_id=conversation_id,
         )
         
         return post

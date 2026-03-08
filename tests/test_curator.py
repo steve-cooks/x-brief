@@ -148,6 +148,68 @@ def test_following_section_falls_back_to_tracked_accounts_when_source_missing() 
     assert any(item.post.id == "follow-fallback" for item in following.items)
 
 
+def test_curate_briefing_enforces_tab_priority_without_duplicates() -> None:
+    posts = [
+        make_post(
+            "overlap-post",
+            "author-a",
+            "AI thread with huge engagement and interest keywords.",
+            likes=25_000,
+            reposts=4_000,
+            views=2_200_000,
+            replies=1_200,
+            bookmarks=900,
+            source="following",
+        ),
+        make_post(
+            "top-only",
+            "author-b",
+            "OpenAI and Claude workflow notes for builders.",
+            likes=300,
+            reposts=40,
+            views=50_000,
+            replies=480,
+            bookmarks=510,
+            source="for_you",
+        ),
+        make_post(
+            "follow-only",
+            "author-c",
+            "Daily update from tracked account.",
+            likes=80,
+            reposts=8,
+            views=7_000,
+            replies=20,
+            bookmarks=10,
+            source="following",
+        ),
+    ]
+    users = {
+        "author-a": make_user("author-a", followers_count=20_000),
+        "author-b": make_user("author-b", followers_count=12_000),
+        "author-c": make_user("author-c", followers_count=10_000),
+    }
+
+    briefing = curate_briefing(
+        posts=posts,
+        users=users,
+        interests=["AI & Tech"],
+        tracked_accounts=["author-a", "author-c"],
+        hours=24,
+        search_posts=posts,
+    )
+
+    viral = next(s for s in briefing.sections if s.title == "VIRAL 🔥")
+    top_picks = next(s for s in briefing.sections if s.title == "TOP PICKS 📌")
+    following = next(s for s in briefing.sections if s.title == "FOLLOWING 👥")
+
+    assert any(item.post.id == "overlap-post" for item in viral.items)
+    assert not any(item.post.id == "overlap-post" for item in top_picks.items)
+    assert not any(item.post.id == "overlap-post" for item in following.items)
+    assert any(item.post.id == "top-only" for item in top_picks.items)
+    assert any(item.post.id == "follow-only" for item in following.items)
+
+
 def test_top_picks_prioritizes_replies_and_bookmarks() -> None:
     posts = [
         make_post(

@@ -18,6 +18,8 @@ def make_scan_post(
     url: str | None = None,
     source: str | None = None,
     metrics: dict | None = None,
+    conversation_id: str | None = None,
+    urls: list[str] | None = None,
 ) -> dict:
     username = author.lstrip("@")
     data = {
@@ -39,6 +41,10 @@ def make_scan_post(
         data["avatar_url"] = avatar_url
     if source is not None:
         data["source"] = source
+    if conversation_id is not None:
+        data["conversation_id"] = conversation_id
+    if urls is not None:
+        data["urls"] = urls
     return data
 
 
@@ -214,6 +220,83 @@ def test_load_scan_posts_detects_articles_and_threads(tmp_path: Path) -> None:
 
     assert posts_by_id["901"].thread_posts
     assert any(tp.id == "902" for tp in posts_by_id["901"].thread_posts)
+
+
+def test_load_scan_posts_does_not_create_threads_without_markers(tmp_path: Path) -> None:
+    scan_dir = tmp_path / "timeline_scans"
+    scan_time = datetime.now(timezone.utc).replace(microsecond=0)
+
+    write_scan_file(
+        scan_dir,
+        "2026-03-08-11.json",
+        scan_time=scan_time,
+        posts=[
+            make_scan_post(
+                "930",
+                "@sameauthor",
+                text="Shipping updates for product launch today",
+                posted_at="4m ago",
+            ),
+            make_scan_post(
+                "931",
+                "@sameauthor",
+                text="Another separate thought with no chaining signals",
+                posted_at="2m ago",
+            ),
+        ],
+    )
+
+    posts, _ = load_scan_posts(str(scan_dir), hours=24)
+    posts_by_id = {post.id: post for post in posts}
+
+    assert posts_by_id["930"].thread_posts == []
+    assert posts_by_id["931"].thread_posts == []
+
+
+def test_load_scan_posts_threads_when_conversation_id_matches(tmp_path: Path) -> None:
+    scan_dir = tmp_path / "timeline_scans"
+    scan_time = datetime.now(timezone.utc).replace(microsecond=0)
+
+    write_scan_file(
+        scan_dir,
+        "2026-03-08-11.json",
+        scan_time=scan_time,
+        posts=[
+            make_scan_post("940", "@convouser", text="No marker one", posted_at="11m ago", conversation_id="c1"),
+            make_scan_post("941", "@convouser", text="No marker two", posted_at="9m ago", conversation_id="c1"),
+        ],
+    )
+
+    posts, _ = load_scan_posts(str(scan_dir), hours=24)
+    posts_by_id = {post.id: post for post in posts}
+
+    assert any(tp.id == "941" for tp in posts_by_id["940"].thread_posts)
+
+
+def test_load_scan_posts_detects_article_from_bare_text_url(tmp_path: Path) -> None:
+    scan_dir = tmp_path / "timeline_scans"
+    scan_time = datetime.now(timezone.utc).replace(microsecond=0)
+
+    write_scan_file(
+        scan_dir,
+        "2026-03-08-11.json",
+        scan_time=scan_time,
+        posts=[
+            make_scan_post(
+                "950",
+                "@writer",
+                text="Read this x.com/writer/article/abc123 right now",
+                posted_at="10m ago",
+                url="https://x.com/writer/status/950",
+            )
+        ],
+    )
+
+    posts, _ = load_scan_posts(str(scan_dir), hours=24)
+    post = posts[0]
+
+    assert post.is_article is True
+    assert post.article_url == "https://x.com/writer/article/abc123"
 
 
 def test_load_scan_posts_skips_invalid_json_and_continues(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

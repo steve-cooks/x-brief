@@ -153,9 +153,26 @@ def _matches_interests(post: Post, interests: list[str]) -> bool:
         if not interest:
             continue
         keywords = INTEREST_KEYWORDS.get(interest, [interest.lower()])
-        if any(k.lower() in text for k in keywords):
-            return True
+        for keyword in keywords:
+            normalized = keyword.lower().strip()
+            if not normalized:
+                continue
+            if len(normalized) <= 3 and normalized.isalpha():
+                if re.search(rf"\b{re.escape(normalized)}\b", text):
+                    return True
+            elif normalized in text:
+                return True
     return False
+
+
+def _is_viral_candidate(post: Post) -> bool:
+    m = post.metrics
+    return (
+        m.views >= 500_000
+        or m.likes >= 5_000
+        or m.reposts >= 1_000
+        or m.bookmarks >= 800
+    )
 
 
 def _viral_score(post: Post) -> float:
@@ -212,11 +229,13 @@ def curate_briefing(
     recent_posts = [p for p in merged_posts if _within_hours(p, now, 48)]
 
     sections: list[BriefingSection] = []
+    remaining_posts = list(recent_posts)
 
     # 1) VIRAL 🔥
     viral_scored = [
         (p, _viral_score(p))
-        for p in recent_posts
+        for p in remaining_posts
+        if _is_viral_candidate(p)
     ]
     viral_scored.sort(key=lambda x: x[1], reverse=True)
     viral_scored = cap_posts_per_account(viral_scored, max_per_account=2)
@@ -226,10 +245,12 @@ def curate_briefing(
     ]
     if viral_items:
         sections.append(BriefingSection(title="VIRAL 🔥", emoji="🔥", items=viral_items))
+        viral_ids = {item.post.id for item in viral_items}
+        remaining_posts = [p for p in remaining_posts if p.id not in viral_ids]
 
     # 2) TOP PICKS 📌 (niche + heavy replies/bookmarks)
     top_picks_candidates = []
-    for p in recent_posts:
+    for p in remaining_posts:
         if not _matches_interests(p, interests):
             continue
         user = users.get(p.author_id)
@@ -243,10 +264,12 @@ def curate_briefing(
     ]
     if top_picks_items:
         sections.append(BriefingSection(title="TOP PICKS 📌", emoji="📌", items=top_picks_items))
+        top_picks_ids = {item.post.id for item in top_picks_items}
+        remaining_posts = [p for p in remaining_posts if p.id not in top_picks_ids]
 
     # 3) FOLLOWING 👥 (source=following; fallback tracked accounts when source missing)
     following_candidates = []
-    for p in recent_posts:
+    for p in remaining_posts:
         if not _is_following_post(p, tracked_accounts_set):
             continue
         user = users.get(p.author_id)
