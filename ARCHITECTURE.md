@@ -4,8 +4,8 @@
 
 X Brief is a local, two-part system:
 
-- A Python pipeline in [`x_brief/`](/home/cluvis/projects/x-brief/x_brief) that ingests X data, deduplicates and scores posts, curates sections, and exports JSON.
-- A Next.js frontend in [`web/`](/home/cluvis/projects/x-brief/web) that reads that JSON and renders the briefing UI.
+- A Python pipeline in [`x_brief/`](./x_brief) that ingests X data, deduplicates and scores posts, curates sections, and exports JSON.
+- A Next.js frontend in [`web/`](./web) that reads that JSON and renders the briefing UI.
 
 The current primary workflow is scan mode: browser automation writes timeline scan JSON, the Python pipeline converts it into `data/latest-briefing.json`, and the web app serves that file through `/api/briefing`.
 
@@ -16,21 +16,21 @@ The current primary workflow is scan mode: browser automation writes timeline sc
 Scan mode is the main path for the current codebase.
 
 1. A browser agent writes timeline scan files into `./timeline_scans/` or `X_BRIEF_SCAN_DIR`.
-2. [`x_brief.scan_reader`](/home/cluvis/projects/x-brief/x_brief/scan_reader.py) parses those files into typed `Post` objects.
-3. [`x_brief.dedup`](/home/cluvis/projects/x-brief/x_brief/dedup.py) optionally filters posts already used in previous briefs.
-4. [`x_brief.curator`](/home/cluvis/projects/x-brief/x_brief/curator.py) builds briefing sections from the parsed posts.
-5. [`x_brief.pipeline`](/home/cluvis/projects/x-brief/x_brief/pipeline.py) exports `data/latest-briefing.json`.
-6. [`x_brief.enrichment`](/home/cluvis/projects/x-brief/x_brief/enrichment.py) optionally augments posts with syndication media, quotes, and link cards.
+2. [`x_brief.scan_reader`](./x_brief/scan_reader.py) parses those files into typed `Post` objects.
+3. [`x_brief.dedup`](./x_brief/dedup.py) optionally filters posts already used in previous briefs.
+4. [`x_brief.curator`](./x_brief/curator.py) builds briefing sections from the parsed posts.
+5. [`x_brief.pipeline`](./x_brief/pipeline.py) exports `data/latest-briefing.json`.
+6. [`x_brief.enrichment`](./x_brief/enrichment.py) optionally augments posts with syndication media, quotes, and link cards.
 7. The Next.js app reads that JSON and renders the briefing.
 
 ### API Mode
 
 API mode is still supported, but it is secondary and requires `X_BRIEF_BEARER_TOKEN`.
 
-1. [`x_brief.fetcher`](/home/cluvis/projects/x-brief/x_brief/fetcher.py) calls X API v2.
-2. [`x_brief.analyzer`](/home/cluvis/projects/x-brief/x_brief/analyzer.py) infers interests from followed accounts and builds search queries.
-3. [`x_brief.curator`](/home/cluvis/projects/x-brief/x_brief/curator.py) selects sections from tracked-account posts plus search results.
-4. [`x_brief.pipeline`](/home/cluvis/projects/x-brief/x_brief/pipeline.py) formats markdown and exports the same web JSON contract.
+1. [`x_brief.fetcher`](./x_brief/fetcher.py) calls X API v2.
+2. [`x_brief.analyzer`](./x_brief/analyzer.py) infers interests from followed accounts and builds search queries.
+3. [`x_brief.curator`](./x_brief/curator.py) selects sections from tracked-account posts plus search results.
+4. [`x_brief.pipeline`](./x_brief/pipeline.py) formats markdown and exports the same web JSON contract.
 
 ## Data Flow
 
@@ -61,27 +61,27 @@ Config tracked_accounts + X bearer token
 
 ## Python Modules
 
-- [`x_brief/models.py`](/home/cluvis/projects/x-brief/x_brief/models.py): Pydantic models for posts, users, media, quoted posts, briefing items, and config.
-- [`x_brief/config.py`](/home/cluvis/projects/x-brief/x_brief/config.py): JSON config loading plus env-backed system config.
-- [`x_brief/fetcher.py`](/home/cluvis/projects/x-brief/x_brief/fetcher.py): async X API client.
-- [`x_brief/cache.py`](/home/cluvis/projects/x-brief/x_brief/cache.py): SQLite cache for user/post lookups in API mode.
-- [`x_brief/scorer.py`](/home/cluvis/projects/x-brief/x_brief/scorer.py): post deduplication, scoring, ranking, and viral thresholds.
-- [`x_brief/analyzer.py`](/home/cluvis/projects/x-brief/x_brief/analyzer.py): interest inference, post categorization, breakout detection, search query generation.
-- [`x_brief/curator.py`](/home/cluvis/projects/x-brief/x_brief/curator.py): section assembly for VIRAL, TOP STORIES, YOUR CIRCLE, TRENDING, ARTICLES, and WORTH A LOOK.
-- [`x_brief/dedup.py`](/home/cluvis/projects/x-brief/x_brief/dedup.py): cross-run brief history loading, filtering, saving, and cleanup.
-- [`x_brief/scan_reader.py`](/home/cluvis/projects/x-brief/x_brief/scan_reader.py): scan JSON parsing, timestamp handling, metric parsing, and user synthesis.
-- [`x_brief/enrichment.py`](/home/cluvis/projects/x-brief/x_brief/enrichment.py): syndication enrichment for richer media/cards after JSON export.
-- [`x_brief/formatter.py`](/home/cluvis/projects/x-brief/x_brief/formatter.py): markdown, HTML, and plain-text formatting.
-- [`x_brief/pipeline.py`](/home/cluvis/projects/x-brief/x_brief/pipeline.py): end-to-end orchestration and JSON export.
-- [`x_brief/cli.py`](/home/cluvis/projects/x-brief/x_brief/cli.py): Click CLI entrypoints.
+- [`x_brief/models.py`](./x_brief/models.py): Pydantic models for posts, users, media, quoted posts, briefing items, and config.
+- [`x_brief/config.py`](./x_brief/config.py): JSON config loading plus env-backed system config.
+- [`x_brief/fetcher.py`](./x_brief/fetcher.py): async X API client.
+- [`x_brief/cache.py`](./x_brief/cache.py): SQLite cache for user/post lookups in API mode.
+- [`x_brief/scorer.py`](./x_brief/scorer.py): post deduplication, scoring, ranking, and viral thresholds.
+- [`x_brief/analyzer.py`](./x_brief/analyzer.py): interest inference, post categorization, breakout detection, search query generation.
+- [`x_brief/curator.py`](./x_brief/curator.py): section assembly for VIRAL, TOP STORIES, YOUR CIRCLE, TRENDING, ARTICLES, and WORTH A LOOK.
+- [`x_brief/dedup.py`](./x_brief/dedup.py): cross-run brief history loading, filtering, saving, and cleanup.
+- [`x_brief/scan_reader.py`](./x_brief/scan_reader.py): scan JSON parsing, timestamp handling, metric parsing, and user synthesis.
+- [`x_brief/enrichment.py`](./x_brief/enrichment.py): syndication enrichment for richer media/cards after JSON export.
+- [`x_brief/formatter.py`](./x_brief/formatter.py): markdown, HTML, and plain-text formatting.
+- [`x_brief/pipeline.py`](./x_brief/pipeline.py): end-to-end orchestration and JSON export.
+- [`x_brief/cli.py`](./x_brief/cli.py): Click CLI entrypoints.
 
 ## Frontend Modules
 
-- [`web/src/app/api/briefing/route.ts`](/home/cluvis/projects/x-brief/web/src/app/api/briefing/route.ts): reads `latest-briefing.json` from `X_BRIEF_DATA_DIR` or repo-local fallbacks.
-- [`web/src/app/api/media/route.ts`](/home/cluvis/projects/x-brief/web/src/app/api/media/route.ts): media proxy for approved X media hosts.
-- [`web/src/app/page.tsx`](/home/cluvis/projects/x-brief/web/src/app/page.tsx): app entrypoint.
-- [`web/src/components/briefing-view.tsx`](/home/cluvis/projects/x-brief/web/src/components/briefing-view.tsx): tabbed briefing shell, polling, read state, media viewer integration.
-- [`web/src/components/x-brief/post-card.tsx`](/home/cluvis/projects/x-brief/web/src/components/x-brief/post-card.tsx): individual post rendering.
+- [`web/src/app/api/briefing/route.ts`](./web/src/app/api/briefing/route.ts): reads `latest-briefing.json` from `X_BRIEF_DATA_DIR` or repo-local fallbacks.
+- [`web/src/app/api/media/route.ts`](./web/src/app/api/media/route.ts): media proxy for approved X media hosts.
+- [`web/src/app/page.tsx`](./web/src/app/page.tsx): app entrypoint.
+- [`web/src/components/briefing-view.tsx`](./web/src/components/briefing-view.tsx): tabbed briefing shell, polling, read state, media viewer integration.
+- [`web/src/components/x-brief/post-card.tsx`](./web/src/components/x-brief/post-card.tsx): individual post rendering.
 
 The frontend has no Convex backend and no database layer. It is a renderer over the generated JSON file.
 

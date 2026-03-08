@@ -11,16 +11,16 @@ The active, best-supported workflow is scan mode. Browser automation writes scan
 
 ## Code Map
 
-- [`x_brief/pipeline.py`](/home/cluvis/projects/x-brief/x_brief/pipeline.py): main orchestration for API mode and scan mode.
-- [`x_brief/scan_reader.py`](/home/cluvis/projects/x-brief/x_brief/scan_reader.py): parser for browser scan files.
-- [`x_brief/curator.py`](/home/cluvis/projects/x-brief/x_brief/curator.py): section assembly logic.
-- [`x_brief/scorer.py`](/home/cluvis/projects/x-brief/x_brief/scorer.py): ranking, viral thresholds, and in-run deduplication.
-- [`x_brief/dedup.py`](/home/cluvis/projects/x-brief/x_brief/dedup.py): cross-brief history store.
-- [`x_brief/enrichment.py`](/home/cluvis/projects/x-brief/x_brief/enrichment.py): optional syndication enrichment after JSON export.
-- [`x_brief/cli.py`](/home/cluvis/projects/x-brief/x_brief/cli.py): Click commands for init/fetch/brief/accounts/run.
-- [`scripts/fetch_following.py`](/home/cluvis/projects/x-brief/scripts/fetch_following.py): helper for syncing followed accounts into config.
-- [`web/src/app/api/briefing/route.ts`](/home/cluvis/projects/x-brief/web/src/app/api/briefing/route.ts): server-side JSON bridge for the frontend.
-- [`web/src/components/briefing-view.tsx`](/home/cluvis/projects/x-brief/web/src/components/briefing-view.tsx): tabbed briefing UI.
+- [`x_brief/pipeline.py`](./x_brief/pipeline.py): main orchestration for API mode and scan mode.
+- [`x_brief/scan_reader.py`](./x_brief/scan_reader.py): parser for browser scan files.
+- [`x_brief/curator.py`](./x_brief/curator.py): section assembly logic.
+- [`x_brief/scorer.py`](./x_brief/scorer.py): ranking, viral thresholds, and in-run deduplication.
+- [`x_brief/dedup.py`](./x_brief/dedup.py): cross-brief history store.
+- [`x_brief/enrichment.py`](./x_brief/enrichment.py): optional syndication enrichment after JSON export.
+- [`x_brief/cli.py`](./x_brief/cli.py): Click commands for init/fetch/brief/accounts/run.
+- [`scripts/fetch_following.py`](./scripts/fetch_following.py): helper for syncing followed accounts into config.
+- [`web/src/app/api/briefing/route.ts`](./web/src/app/api/briefing/route.ts): server-side JSON bridge for the frontend.
+- [`web/src/components/briefing-view.tsx`](./web/src/components/briefing-view.tsx): tabbed briefing UI.
 
 ## Commands That Matter
 
@@ -35,7 +35,7 @@ The active, best-supported workflow is scan mode. Browser automation writes scan
 
 ## Important Behavior
 
-- `x-brief run` uses the API-backed pipeline in [`x_brief/pipeline.py`](/home/cluvis/projects/x-brief/x_brief/pipeline.py).
+- `x-brief run` uses the API-backed pipeline in [`x_brief/pipeline.py`](./x_brief/pipeline.py).
 - Scan mode is currently only exposed through `python -m x_brief.pipeline ... --from-scans`.
 - `x-brief brief` is still a lighter API-mode briefing path. It does not go through the full scan-mode pipeline.
 - Scan mode writes `data/latest-briefing.json`; the frontend renders that file without its own persistence layer.
@@ -63,7 +63,7 @@ The active, best-supported workflow is scan mode. Browser automation writes scan
 
 Focused pytest coverage now exists for:
 
-- [`tests/test_scorer.py`](/home/cluvis/projects/x-brief/tests/test_scorer.py)
-- [`tests/test_dedup.py`](/home/cluvis/projects/x-brief/tests/test_dedup.py)
-- [`tests/test_curator.py`](/home/cluvis/projects/x-brief/tests/test_curator.py)
-- [`tests/test_models.py`](/home/cluvis/projects/x-brief/tests/test_models.py)
+- [`tests/test_scorer.py`](./tests/test_scorer.py)
+- [`tests/test_dedup.py`](./tests/test_dedup.py)
+- [`tests/test_curator.py`](./tests/test_curator.py)
+- [`tests/test_models.py`](./tests/test_models.py)
