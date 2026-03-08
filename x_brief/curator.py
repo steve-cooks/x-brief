@@ -1,10 +1,131 @@
 """Content curation and briefing assembly for X Brief."""
 import re
-from collections import Counter
 from datetime import datetime, timezone
 from x_brief.models import Post, User, Briefing, BriefingSection, BriefingItem
-from x_brief.scorer import deduplicate, score_post, rank_posts, is_mega_viral
-from x_brief.analyzer import categorize_posts, detect_breakout_posts
+from x_brief.scorer import deduplicate, score_post, is_mega_viral
+
+
+INTEREST_KEYWORDS = {
+    "AI & Tech": [
+        "ai",
+        "artificial intelligence",
+        "llm",
+        "gpt",
+        "claude",
+        "machine learning",
+        "deep learning",
+        "neural",
+        "model",
+        "openai",
+        "anthropic",
+        "agent",
+        "coding",
+        "developer",
+        "software",
+        "engineering",
+        "api",
+        "open source",
+        "cursor",
+        "copilot",
+        "codex",
+        "programming",
+        "tech",
+    ],
+    "Crypto & Web3": [
+        "crypto",
+        "bitcoin",
+        "ethereum",
+        "web3",
+        "nft",
+        "defi",
+        "blockchain",
+        "token",
+        "sol",
+        "solana",
+        "wallet",
+        "onchain",
+    ],
+    "Startups & Business": [
+        "startup",
+        "founder",
+        "building",
+        "launch",
+        "saas",
+        "revenue",
+        "growth",
+        "product",
+        "yc",
+        "fundraise",
+        "investor",
+        "venture",
+        "business",
+        "entrepreneur",
+        "ship",
+    ],
+    "Design & UI": [
+        "design",
+        "ui",
+        "ux",
+        "figma",
+        "css",
+        "animation",
+        "frontend",
+        "pixel",
+        "typography",
+        "visual",
+    ],
+    "Sports": ["tennis", "football", "basketball", "athlete", "match", "tournament", "grand slam", "atp", "nba", "nfl"],
+    "Self-Improvement": ["mindset", "discipline", "focus", "productivity", "habits", "routine", "grind", "growth", "motivation", "quotes"],
+    "Creator Economy": ["creator", "content", "audience", "community", "newsletter", "youtube", "podcast", "monetize", "whop"],
+}
+
+
+def categorize_posts(posts: list[Post], interests: list[str]) -> dict[str, list[Post]]:
+    """Assign posts to interest categories based on text content."""
+    categorized = {interest: [] for interest in interests}
+    categorized["General"] = []
+
+    for post in posts:
+        text = post.text.lower()
+        matched = False
+        for interest in interests:
+            keywords = INTEREST_KEYWORDS.get(interest, [])
+            if any(keyword in text for keyword in keywords):
+                categorized[interest].append(post)
+                matched = True
+        if not matched:
+            categorized["General"].append(post)
+
+    return {key: value for key, value in categorized.items() if value}
+
+
+def detect_breakout_posts(posts: list[Post], threshold: float = 2.0) -> list[Post]:
+    """Find posts with unusually high engagement for an author."""
+    if not posts:
+        return []
+
+    by_author: dict[str, list[Post]] = {}
+    for post in posts:
+        by_author.setdefault(post.author_id, []).append(post)
+
+    breakouts = []
+    for author_posts in by_author.values():
+        if len(author_posts) < 2:
+            continue
+
+        engagements = []
+        for post in author_posts:
+            metrics = post.metrics
+            engagement = metrics.likes + metrics.reposts * 3 + metrics.replies * 2 + metrics.quotes * 4
+            engagements.append((post, engagement))
+
+        median_engagement = sorted(score for _, score in engagements)[len(engagements) // 2] or 1
+        for post, engagement in engagements:
+            if engagement > median_engagement * threshold:
+                breakouts.append(post)
+
+    return breakouts
+
 
 def detect_network_amplification(posts: list[Post], search_posts: list[Post]) -> dict[str, float]:
     """

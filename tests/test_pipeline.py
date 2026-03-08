@@ -270,3 +270,35 @@ def test_run_briefing_from_scans_returns_no_posts_when_scan_data_empty(
     assert output == "No posts found in scan data."
     assert not (data_dir / "latest-briefing.json").exists()
     assert enrichment_calls == []
+
+
+def test_pipeline_main_accepts_from_scans_flag(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    async def fake_run_briefing_from_scans(config_path, scan_dir=None, hours=36, skip_dedup=False) -> str:
+        calls["config_path"] = config_path
+        calls["scan_dir"] = scan_dir
+        calls["hours"] = hours
+        calls["skip_dedup"] = skip_dedup
+        return "ok"
+
+    monkeypatch.setattr(pipeline, "run_briefing_from_scans", fake_run_briefing_from_scans)
+
+    pipeline.main(
+        [
+            "configs/example.json",
+            "--from-scans",
+            "--hours",
+            "36",
+            "--scan-dir",
+            "./timeline_scans",
+            "--skip-dedup",
+        ]
+    )
+
+    assert calls == {
+        "config_path": "configs/example.json",
+        "scan_dir": "./timeline_scans",
+        "hours": 36,
+        "skip_dedup": True,
+    }
