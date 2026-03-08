@@ -216,10 +216,20 @@ def test_load_scan_posts_detects_articles_and_threads(tmp_path: Path) -> None:
     assert any(tp.id == "902" for tp in posts_by_id["901"].thread_posts)
 
 
-def test_load_scan_posts_raises_on_invalid_json(tmp_path: Path) -> None:
+def test_load_scan_posts_skips_invalid_json_and_continues(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     scan_dir = tmp_path / "timeline_scans"
     scan_dir.mkdir(parents=True)
     (scan_dir / "2026-03-08-11.json").write_text("{not valid json", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="Invalid JSON in scan file"):
-        load_scan_posts(str(scan_dir), hours=24)
+    write_scan_file(
+        scan_dir,
+        "2026-03-08-12.json",
+        scan_time=datetime.now(timezone.utc).replace(microsecond=0),
+        posts=[make_scan_post("777", "@valid", posted_at="5m ago")],
+    )
+
+    posts, _ = load_scan_posts(str(scan_dir), hours=24)
+    captured = capsys.readouterr()
+
+    assert [post.id for post in posts] == ["777"]
+    assert "Skipping invalid JSON scan file" in captured.out

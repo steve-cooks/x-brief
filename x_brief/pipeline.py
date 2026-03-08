@@ -151,7 +151,7 @@ async def run_briefing_from_scans(
         else:
             print("🔄 Checking brief history for duplicates...")
             history = load_brief_history(history_path)
-            fresh_posts = filter_already_briefed(all_posts, history)
+            fresh_posts = filter_already_briefed(all_posts, history, max_age_hours=hours)
 
             if not fresh_posts:
                 return fail_pipeline("Zero posts after processing (all scanned posts already briefed).")
@@ -192,7 +192,7 @@ async def run_briefing_from_scans(
             for section in briefing.sections:
                 for item in section.items:
                     briefed_posts.append(item.post)
-            save_brief_history(history_path, history, briefed_posts)
+            save_brief_history(history_path, history, briefed_posts, max_age_hours=hours)
 
         status_payload = {
             "status": "ok",

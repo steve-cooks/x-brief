@@ -31,14 +31,30 @@ def test_save_history_and_filter_already_briefed_round_trip(tmp_path) -> None:
     first_post = make_post("1", author_username="alice")
     second_post = make_post("2", author_username="bob")
 
-    save_brief_history(str(history_path), history, [first_post])
+    save_brief_history(str(history_path), history, [first_post], max_age_hours=48)
 
     saved_history = json.loads(history_path.read_text())
-    remaining_posts = filter_already_briefed([first_post, second_post], saved_history)
+    remaining_posts = filter_already_briefed([first_post, second_post], saved_history, max_age_hours=48)
 
     assert "1" in saved_history["posts"]
     assert saved_history["posts"]["1"]["url"] == "https://x.com/alice/status/1"
     assert [post.id for post in remaining_posts] == ["2"]
+
+
+def test_filter_already_briefed_only_blocks_recent_window() -> None:
+    now = datetime.now(timezone.utc)
+    history = {
+        "posts": {
+            "old": {"briefed_at": (now - timedelta(hours=72)).isoformat()},
+            "fresh": {"briefed_at": (now - timedelta(hours=4)).isoformat()},
+        },
+        "last_cleanup": now.isoformat(),
+    }
+
+    posts = [make_post("old"), make_post("fresh"), make_post("new")]
+    remaining = filter_already_briefed(posts, history, max_age_hours=48)
+
+    assert {p.id for p in remaining} == {"old", "new"}
 
 
 def test_cleanup_history_prunes_entries_older_than_cutoff() -> None:
@@ -71,7 +87,7 @@ def test_save_brief_history_skips_cleanup_when_last_cleanup_recent(tmp_path, mon
         return history
 
     monkeypatch.setattr(dedup, "cleanup_history", fail_if_called)
-    save_brief_history(str(history_path), history, [make_post("3", author_username="charlie")])
+    save_brief_history(str(history_path), history, [make_post("3", author_username="charlie")], max_age_hours=48)
 
     assert calls == []
 
@@ -85,11 +101,11 @@ def test_save_brief_history_runs_cleanup_when_last_cleanup_stale(tmp_path, monke
 
     calls: list[bool] = []
 
-    def mark_called(current_history, max_age_hours=168):
+    def mark_called(current_history, max_age_hours=48):
         calls.append(True)
         return current_history
 
     monkeypatch.setattr(dedup, "cleanup_history", mark_called)
-    save_brief_history(str(history_path), history, [make_post("4", author_username="dana")])
+    save_brief_history(str(history_path), history, [make_post("4", author_username="dana")], max_age_hours=48)
 
     assert calls == [True]
