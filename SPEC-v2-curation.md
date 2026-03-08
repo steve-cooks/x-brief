@@ -1,140 +1,147 @@
-# X Brief v2 — Curation Engine Spec
+# X Brief v2 — Curation Engine Spec (Implemented)
 
 ## Mission
-Replace 2 hours of mindless scrolling with 5 minutes of curated signal.
-X Brief is an anti-addiction tool that delivers the gems so you don't have to scroll.
+
+Replace 2 hours of mindless scrolling with ~5 minutes of useful signal.
+
+X Brief is an anti-addiction product, not a feed maximizer.
 
 ---
 
-## Tabs (3 + empty states)
+## Pipeline flow
 
-### 1. Can't Miss 🔥 (3-5 posts max)
-**Purpose:** Things you absolutely need to know about. Major events only.
-**Criteria:**
-- Extreme virality: top 0.1% engagement relative to what we see (views > 500K AND likes > 10K)
-- OR: from a major account (>1M followers) with abnormally high engagement for THEM
-- Any niche — this is global importance
-- Any post type (tweet, thread, article, video)
-- **If nothing qualifies, the tab shows "Nothing major happened. Go live your life. ✌️"**
-- Empty is a feature, not a bug
+```text
+scan ingest → dedup → score → curate 3 tabs → export JSON → frontend
+```
 
-### 2. For You 📌 (max 10, topic-diverse)
-**Purpose:** Best posts from your For You page, one per topic.
-**Criteria:**
-- Source: `for_you` or either (not restricted)
-- Must match user's interests/niches (semantic or keyword)
-- **Topic clustering:** Group similar posts → pick the BEST from each cluster
-  - Similarity = same subject (e.g., 5 posts about "GPT-5.4 launch" = 1 cluster)
-  - Implementation: simple keyword overlap + author dedup. NOT full embeddings (keep it fast)
-  - Pick the post with highest information density score from each cluster
-- **Information density scoring:**
-  - Has external link: +3 points
-  - Is article (`/article/` URL): +5 points
-  - Is thread (2+ posts): +4 points
-  - Post length > 200 chars: +2 points
-  - Has media (image/video): +1 point
-  - Pure hot take (< 100 chars, no links, no media): -2 points
-  - These bonuses ADD to the base engagement score
-- Max 1 post per author
-- Ranked by: (engagement_score × 0.4) + (information_density × 0.6)
-
-### 3. Following 👥 (max 10)
-**Purpose:** Best posts from people you actually follow.
-**Criteria:**
-- Source: `following` only (fallback: author in `tracked_accounts`)
-- Lower engagement threshold than other tabs (these are YOUR people)
-  - Minimum: 50 likes OR 500 views (just needs SOME traction)
-- Same topic clustering as For You — one post per topic
-- Same information density scoring
-- Ranked by: (engagement_score × 0.5) + (information_density × 0.5)
-  - Balanced — you care about what these people say even if it's not optimized for engagement
+- Ingest: `x_brief/scan_reader.py`
+- Dedup history + re-emergence: `x_brief/dedup.py`
+- Scoring: `x_brief/scorer.py`
+- Curation: `x_brief/curator.py`
+- Orchestration/export: `x_brief/pipeline.py`
 
 ---
 
-## Scoring Overhaul
+## Tabs (current behavior)
 
-### Base Engagement Score (0-100 scale, normalized)
-```
-raw = (likes × 1.0) + (reposts × 2.0) + (replies × 1.5) + (bookmarks × 3.0) + (views × 0.01)
-```
-- Bookmarks weighted 3x — bookmarks = "this is actually useful" (strongest signal)
-- Replies weighted 1.5x — discussion = substance
-- Reposts weighted 2x — people sharing = endorsement
-- Views weighted low — views are cheap, passive
+## 1) Can't Miss 🔥
+Purpose: rare, globally important events.
 
-Normalize to 0-100 based on max score in current batch.
+Selection gates (all required):
+1. **Density >= 3**
+2. **likes >= 10,000 and views >= 500,000**
+3. **(bookmarks + replies) / likes >= 0.05**
 
-### Information Density Score (0-20 scale)
+Additional constraints:
+- max 5 posts
+- max 1 post per author
+- ranked by `0.7*engagement + 0.3*density`
+
+Empty-state text in UI:
+> "Nothing major happened. Go live your life. ✌️"
+
+## 2) For You 📌
+Purpose: interest-aligned, high-substance, topic-diverse picks.
+
+- Candidate rules:
+  - not already selected in earlier tabs
+  - not excluded re-emergent IDs (reserved for Can't Miss)
+  - matches configured interests/keywords
+- Topic clustering:
+  - one winner per cluster
+  - winner = highest score in cluster (threads preferred if present)
+- Author cap: max 1 per author
+- Limit: max 10
+- Ranked by `0.4*engagement + 0.6*density`
+
+## 3) Following 👥
+Purpose: balanced updates from people user intentionally tracks.
+
+- Candidate rules:
+  - not already selected in earlier tabs
+  - not excluded re-emergent IDs
+  - source is `following` OR username in `tracked_accounts`
+  - minimum traction: `likes >= 50 OR views >= 500`
+- Topic-clustered (same as For You)
+- Limit: max 10
+- Ranked by `0.5*engagement + 0.5*density`
+
+Empty-state text in UI:
+> "Your follows haven't posted much. That's okay."
+
+---
+
+## Scoring
+
+## Engagement (normalized 0-100 per run)
+
+```text
+raw = likes*1.0 + reposts*2.0 + replies*1.5 + bookmarks*3.0 + views*0.01
 ```
+
+Why:
+- bookmarks (3x) = strongest usefulness intent
+- reposts/replies carry more signal than likes
+- views are weak/passive
+
+Normalized by max raw score in the current candidate batch.
+
+## Information density (0-20)
+
+```text
 density = 0
-if has_external_link: density += 3
-if is_article: density += 5
-if is_thread: density += 4
-if len(text) > 200: density += 2
-if len(text) > 500: density += 2  (additional)
-if has_media: density += 1
-if len(text) < 100 and not has_link and not has_media: density -= 2  (hot take penalty)
++3 if has link
++5 if article
++4 if thread (2+ connected posts)
++2 if text > 200 chars
++2 if text > 500 chars
++1 if has media
+-2 if short hot take (<100 chars, no link, no media)
+clamped to [0, 20]
 ```
 
-### Final Score per tab
-- Can't Miss: pure engagement (must cross extreme threshold)
-- For You: `engagement × 0.4 + density × 0.6` (favors substance)
-- Following: `engagement × 0.5 + density × 0.5` (balanced)
+---
+
+## Topic clustering
+
+Fast heuristic (no embeddings):
+
+1. Extract tokens per post:
+   - normalized URLs
+   - @mentions
+   - hashtags
+   - top 5 non-stopword terms
+2. Two posts are same topic if:
+   - they share any normalized URL, **or**
+   - they share >= 2 tokens
+3. Build connected clusters
+4. Select one winner per cluster
+5. If cluster contains thread posts, prefer highest-scored thread winner
+
+Goal: force breadth and avoid 5 slots on one announcement.
 
 ---
 
-## Topic Clustering (simple, fast)
+## Dedup + re-emergence
 
-Not ML-based. Simple heuristic:
-1. Extract "topic tokens" from each post: URLs, @mentions, hashtags, and top 5 non-stopword terms
-2. Two posts are "same topic" if they share ≥2 topic tokens OR link to the same URL
-3. Group into clusters
-4. From each cluster, pick the post with highest final score
-5. If a cluster has a thread AND a standalone post about the same thing, prefer the thread
+- Dedup window is based on pipeline `hours` (default 36/48 depending command)
+- Previously briefed posts are filtered within the active window
+- Re-emergence rule: if a previously briefed post now has >=10x prior raw engagement **and** meets Can't Miss threshold, it is allowed back (Can't Miss only)
 
 ---
 
-## Empty Tab Messaging
+## Read-time estimate
 
-Each tab can be empty. Show encouraging messages:
-- **Can't Miss:** "Nothing major happened. Go live your life. ✌️"
-- **For You:** "Your timeline is quiet. Check back later."
-- **Following:** "Your follows haven't posted much. That's okay."
+UI displays `~X min read` where:
+- `X = ceil(total_posts / 2)`
+- heuristic: ~30 seconds per post scan
 
----
-
-## Read Time Estimate
-
-Show at the top of the briefing: "~X min read"
-- Estimate: 30 seconds per post (scanning, not reading every word)
-- 15 posts = "~8 min read", 5 posts = "~3 min read"
-- Reinforces the message: this is QUICK, then you're done
+Purpose: reinforce "quick brief then leave" behavior.
 
 ---
 
-## Post-Dedup Behavior
+## Notes on intentional non-features
 
-- Dedup window stays at 48h
-- Posts that were in a previous briefing don't reappear
-- BUT: if a post's engagement jumps 10x since last briefed, it can reappear in Can't Miss
-  - Handles "this blew up overnight" scenarios
-
----
-
-## What does NOT change
-- Scan process (Rabbit scrapes For You + Following)
-- Enrichment (syndication API for avatars/media)
-- Frontend rendering (post cards, media, threads)
-- Pipeline flow (scan → score → curate → enrich → export)
-- No API keys, no database, no cloud
-
----
-
-## Implementation Order
-1. New scorer (engagement + density scoring)
-2. Topic clustering in curator
-3. New 3-tab curation with thresholds
-4. Empty tab messaging in frontend
-5. Read time estimate in frontend
-6. Update tab labels (Viral→Can't Miss, Top Picks→For You)
-7. Update tests
+- No embeddings/ML infrastructure (speed + simplicity)
+- No DB required for core flow (JSON artifacts)
+- No cloud dependency required for local run

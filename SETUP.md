@@ -1,26 +1,14 @@
-# X Brief Setup
+# X Brief Setup Guide
 
-This is the full end-to-end setup for the scan-only version of X Brief.
+This guide covers local setup for the scan-only workflow.
 
-## What You Need
+## Prerequisites
 
 - Python 3.10+
 - Node.js 18+
-- A local clone of this repository
-- A browser automation workflow or exported timeline scan files
+- Timeline scan JSON files (from your browser automation/scraper)
 
-## Repository Layout
-
-```text
-x-brief/
-├── configs/
-├── data/
-├── timeline_scans/
-├── web/
-└── x_brief/
-```
-
-## 1. Clone And Install
+## 1) Clone + install backend
 
 ```bash
 git clone https://github.com/steve-cooks/x-brief.git
@@ -31,51 +19,21 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-## 2. Create A Config File
+## 2) Configure
 
 ```bash
 cp configs/example.json configs/my-config.json
 ```
 
-Example:
+Edit `configs/my-config.json` with:
+- `tracked_accounts`
+- `recent_interests`
 
-```json
-{
-  "x_handle": "your_x_handle",
-  "tracked_accounts": ["openai", "AnthropicAI", "vercel"],
-  "recent_interests": ["AI", "Machine Learning", "Startups", "Design"],
-  "delivery": { "type": "telegram" },
-  "briefing_schedule": "daily"
-}
-```
+## 3) Prepare scans
 
-Field notes:
+Default scan input directory: `./timeline_scans/`
 
-- `x_handle`: optional reference to your own handle.
-- `tracked_accounts`: optional context for who matters to you.
-- `recent_interests`: topics used during curation.
-- `delivery`: reserved for downstream delivery integrations.
-- `briefing_schedule`: free-form schedule label.
-
-## 3. Optional Environment Variables
-
-No `.env` file is required. The scan-only pipeline supports:
-
-- `X_BRIEF_SCAN_DIR`: input folder for timeline scan JSON. Default: `./timeline_scans/`
-- `X_BRIEF_DATA_DIR`: output folder for `latest-briefing.json`, `brief_history.json`, and `pipeline-status.json`
-
-Example:
-
-```bash
-X_BRIEF_SCAN_DIR=./timeline_scans
-X_BRIEF_DATA_DIR=./data
-```
-
-## 4. Browser Scan File Format
-
-X Brief expects scan JSON files in `timeline_scans/` or your configured scan directory.
-
-Minimum supported shape:
+Minimum file shape:
 
 ```json
 {
@@ -85,64 +43,26 @@ Minimum supported shape:
       "url": "https://x.com/openai/status/1891111111111111111",
       "author": "@openai",
       "author_name": "OpenAI",
-      "avatar_url": "https://pbs.twimg.com/profile_images/.../openai_normal.jpg",
-      "text": "Example scan post for local setup validation.",
+      "text": "Example post",
       "posted_at": "57m ago",
       "verified": true,
-      "metrics": {
-        "likes": "1200",
-        "reposts": "80",
-        "replies": "40",
-        "views": "100K"
-      }
+      "metrics": { "likes": "1200", "reposts": "80", "replies": "40", "views": "100K" }
     }
   ]
 }
 ```
 
-Notes:
+Also supported: `viral_alerts` and `notable_posts` arrays.
 
-- `scan_time` should be ISO 8601.
-- Each post must include a valid X status URL with `/status/<numeric_id>`.
-- `posted_at` can be relative text like `57m ago`, `3h ago`, or `Mar 7`.
-- Metric values can be raw numbers or abbreviated strings like `12K`.
-- `avatar_url` is optional but recommended; when present it is exported as `authorAvatarUrl` without waiting for syndication enrichment.
-- Optional arrays `viral_alerts` and `notable_posts` are also read when present.
-
-## 5. Run The Pipeline
-
-Module entrypoint:
+## 4) Run pipeline
 
 ```bash
-python -m x_brief.pipeline configs/my-config.json --from-scans --hours 48
+python -m x_brief.pipeline configs/my-config.json --from-scans --hours 36
+# or
+x-brief run --config configs/my-config.json --hours 36
 ```
 
-Installed CLI:
-
-```bash
-x-brief brief --config configs/my-config.json --hours 48
-x-brief run --config configs/my-config.json --hours 48
-```
-
-Useful flags:
-
-- `--scan-dir /absolute/path/to/timeline_scans`
-- `--skip-dedup`
-- `--output /path/to/brief.md` for the Click commands
-
-What happens:
-
-1. Scan files from the requested time window are loaded.
-2. Previously briefed posts are filtered unless `--skip-dedup` is set.
-3. The curator builds ranked sections.
-4. Markdown is printed to stdout.
-5. `latest-briefing.json` is written for the frontend.
-6. `pipeline-status.json` is updated with `status: ok` (or `status: error` + details on failures).
-7. `brief_history.json` is updated when dedup is active.
-
-## 6. Run The Web Frontend
-
-Development:
+## 5) Run frontend
 
 ```bash
 cd web
@@ -150,83 +70,28 @@ npm install
 npm run dev
 ```
 
-Production:
+Open `http://localhost:3000`.
+
+## Optional env overrides
+
+- `X_BRIEF_SCAN_DIR` — input directory for scans
+- `X_BRIEF_DATA_DIR` — output directory for briefing/status/history files
+
+Example:
 
 ```bash
-cd web
-npm install
-npm run build
-npm start
+export X_BRIEF_SCAN_DIR=/home/you/timeline_scans
+export X_BRIEF_DATA_DIR=/home/you/x-brief-data
 ```
 
-The frontend reads:
-
-1. `${X_BRIEF_DATA_DIR}/latest-briefing.json` when `X_BRIEF_DATA_DIR` is set.
-2. Otherwise `../data/latest-briefing.json`.
-
-Pipeline health is available in `${X_BRIEF_DATA_DIR}/pipeline-status.json` (or `../data/pipeline-status.json` by default). If you want a frontend health badge, add an API route such as `web/src/app/api/pipeline-status/route.ts` that returns this file.
-
-## 7. Automate Scan + Pipeline
-
-Example browser-agent instruction:
-
-```text
-Go to https://x.com/home and collect timeline posts.
-Write JSON with top-level keys scan_time and posts.
-Save the file to ${X_BRIEF_SCAN_DIR}/$(date -u +%Y-%m-%d-%H).json.
-Then run:
-cd /home/you/projects/x-brief
-source .venv/bin/activate
-python -m x_brief.pipeline configs/my-config.json --from-scans --hours 48
-```
-
-Example cron fallback:
+## Automation with cron
 
 ```cron
 5 */4 * * * cd /home/you/projects/x-brief && . .venv/bin/activate && python -m x_brief.pipeline configs/my-config.json --from-scans --hours 48 >> /home/you/projects/x-brief/data/pipeline.log 2>&1
 ```
 
-## 8. Run The Frontend As A Service
-
-Example user-level systemd service:
-
-```ini
-[Unit]
-Description=X Brief Web Frontend
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/home/you/projects/x-brief/web
-Environment=NODE_ENV=production
-Environment=X_BRIEF_DATA_DIR=/home/you/projects/x-brief/data
-ExecStart=/usr/bin/npm start
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-```
-
 ## Troubleshooting
 
-### No `latest-briefing.json`
-
-- Run `python -m x_brief.pipeline configs/my-config.json --from-scans --hours 48`
-- Confirm the scan directory exists and has recent JSON files
-- Confirm scan files include `scan_time` and valid `/status/<id>` URLs
-
-### Empty results or `All posts already briefed.`
-
-- Run with `--skip-dedup`, or
-- Remove/rotate `brief_history.json` if you intentionally want a full refresh
-
-### Web frontend shows `No briefing available`
-
-- Set `X_BRIEF_DATA_DIR` for the web process when data lives outside the repo default
-- Confirm `latest-briefing.json` exists in the expected directory
-
-### Port conflicts on `3000`
-
-- Stop the other process, or
-- Start Next.js on another port: `npm start -- -p 3001`
+- **No briefing file generated**: verify scan directory exists and contains recent valid JSON
+- **All posts filtered**: run with `--skip-dedup` or clear `data/brief_history.json`
+- **Frontend says no briefing**: check `X_BRIEF_DATA_DIR` alignment between pipeline and web process

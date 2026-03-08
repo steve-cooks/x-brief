@@ -1,22 +1,21 @@
 {
-  "x_handle": "your_x_handle",
+  "x_handle": "your_handle",
   "tracked_accounts": [
     "openai",
-    "AnthropicAI",
+    "anthropicai",
     "vercel",
     "karpathy",
-    "levelsio",
-    "bentossell"
+    "levelsio"
   ],
   "recent_interests": [
-    "AI",
-    "Machine Learning",
-    "Startups",
-    "Software Engineering",
-    "Design"
+    "AI & Tech",
+    "Startups & Business",
+    "Design & UI",
+    "Creator Economy"
   ],
   "delivery": {
-    "type": "telegram"
+    "type": "local",
+    "enabled": true
   },
   "briefing_schedule": "daily"
 }

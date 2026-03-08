@@ -1,13 +1,13 @@
 # X Brief Architecture
 
-## Overview
+## System overview
 
-X Brief is a local, scan-only system:
+X Brief is a local-first scan pipeline plus web renderer.
 
-- The Python package in [`x_brief/`](./x_brief) reads browser timeline scan files, curates a briefing, and exports JSON.
-- The Next.js app in [`web/`](./web) reads that JSON and renders the briefing UI.
-
-## Runtime Flow
+1. Timeline scans are written as JSON snapshots.
+2. Python pipeline ingests, scores, and curates posts.
+3. Pipeline exports JSON artifacts to `data/`.
+4. Next.js app reads those artifacts and renders the briefing UI.
 
 ```text
 timeline_scans/*.json
@@ -15,65 +15,78 @@ timeline_scans/*.json
   -> x_brief.dedup.filter_already_briefed()
   -> x_brief.curator.curate_briefing()
   -> x_brief.pipeline.export_briefing_json()
-  -> data/latest-briefing.json (+ data/pipeline-status.json)
+  -> data/latest-briefing.json + data/pipeline-status.json
   -> web/src/app/api/briefing/route.ts
-  -> (optional) web/src/app/api/pipeline-status/route.ts
   -> web/src/components/briefing-view.tsx
 ```
 
-## Python Modules
+---
 
-- [`x_brief/models.py`](./x_brief/models.py): Pydantic models for posts, users, media, quoted posts, briefing items, and config.
-- [`x_brief/config.py`](./x_brief/config.py): user config load/save helpers.
-- [`x_brief/scan_reader.py`](./x_brief/scan_reader.py): scan JSON parsing, timestamp handling, metric parsing, and user synthesis.
-- [`x_brief/dedup.py`](./x_brief/dedup.py): cross-run brief history loading, filtering, saving, and cleanup.
-- [`x_brief/scorer.py`](./x_brief/scorer.py): post deduplication, scoring, and viral thresholds.
-- [`x_brief/curator.py`](./x_brief/curator.py): section assembly for VIRAL 🔥, TOP PICKS 📌, and FOLLOWING 👥.
-- [`x_brief/enrichment.py`](./x_brief/enrichment.py): optional syndication enrichment after JSON export.
-- [`x_brief/pipeline.py`](./x_brief/pipeline.py): scan-only orchestration, markdown rendering, and JSON export.
-- [`x_brief/cli.py`](./x_brief/cli.py): scan-only Click entrypoints.
+## Backend modules (`x_brief/`)
 
-## Frontend Modules
+- `models.py` — Pydantic data models
+- `config.py` — load/save user config
+- `scan_reader.py` — parse scan files into normalized posts
+- `scorer.py` — engagement+density scoring, in-batch dedup
+- `curator.py` — 3-tab curation (Can't Miss / For You / Following)
+- `dedup.py` — brief-history filtering + re-emergence logic
+- `enrichment.py` — optional syndication enrichment
+- `pipeline.py` — orchestrates full run and writes artifacts
+- `cli.py` — `init`, `brief`, `run` commands
 
-- [`web/src/app/api/briefing/route.ts`](./web/src/app/api/briefing/route.ts): reads `latest-briefing.json` from `X_BRIEF_DATA_DIR` or repo-local fallbacks.
-- `web/src/app/api/pipeline-status/route.ts` (recommended): read `pipeline-status.json` so the UI can surface pipeline health without touching the filesystem directly.
-- [`web/src/app/api/media/route.ts`](./web/src/app/api/media/route.ts): media proxy for approved X media hosts.
-- [`web/src/app/page.tsx`](./web/src/app/page.tsx): app entrypoint.
-- [`web/src/components/briefing-view.tsx`](./web/src/components/briefing-view.tsx): tabbed briefing shell, polling, read state, media viewer integration.
-- [`web/src/components/x-brief/post-card.tsx`](./web/src/components/x-brief/post-card.tsx): individual post rendering.
+---
 
-## Commands
+## Frontend modules (`web/src/`)
 
-- `x-brief init --output config.json`
-- `x-brief brief --config configs/example.json --hours 36`
-- `x-brief run --config configs/example.json --hours 36`
-- `python -m x_brief.pipeline configs/example.json --from-scans --hours 36`
-- `python -m x_brief.pipeline configs/example.json --from-scans --hours 36 --scan-dir ./timeline_scans`
-- `python -m x_brief.pipeline configs/example.json --from-scans --skip-dedup`
-- `cd web && npm install`
-- `cd web && npm run dev`
+- `app/api/briefing/route.ts` — reads `latest-briefing.json`
+- `app/api/read-state/route.ts` — persists read IDs
+- `app/api/media/route.ts` — safe proxy for X media domains
+- `components/briefing-view.tsx` — tab shell, search, refresh, read-time, stale warnings
+- `components/x-brief/post-card.tsx` — post rendering (media/thread/quote/link card)
+- `components/media-viewer.tsx` — full-screen media lightbox
 
-## Output Contract
+---
 
-The shared artifacts are:
+## Data contracts
 
-- `latest-briefing.json` with `generated_at`, `period_hours`, `sections[]`, and `stats`
-- `pipeline-status.json` with:
-  - success: `{ "status": "ok", "last_success": "ISO timestamp", "posts_processed": N, "sections": N }`
-  - failure: `{ "status": "error", "error": "description", "last_success": "ISO timestamp|null", "last_attempt": "ISO timestamp" }`
+## `latest-briefing.json`
 
-Each section contains `title`, `emoji`, and `posts[]`. Each post includes author fields, metrics, media, quoted-post data when present, `postUrl`, timestamps, and optional enrichment data.
+Top-level keys:
+- `generated_at`
+- `period_hours`
+- `sections[]` (each with `title`, `emoji`, `posts[]`)
+- `stats`
 
-## Boundaries
+Each post includes author, text, metrics, media, URL, timestamps, optional thread/quote/article/link-card data.
 
-- Scan ingestion depends on browser-agent JSON quality. Missing `/status/<numeric_id>` URLs cause posts to be dropped.
-- Brief-history dedup only applies when `--skip-dedup` is not used.
-- Syndication enrichment is bounded and intentionally slow; it does not enrich every possible post in large runs.
-- The frontend has no database and no backend persistence layer. It only reads generated JSON and stores per-browser read state locally.
-- The media proxy is intentionally restricted to approved X media hosts.
+## `pipeline-status.json`
+
+Success shape:
+```json
+{ "status": "ok", "last_success": "ISO", "posts_processed": 42, "sections": 3 }
+```
+
+Error shape:
+```json
+{ "status": "error", "error": "...", "last_success": "ISO|null", "last_attempt": "ISO" }
+```
+
+---
+
+## Runtime boundaries
+
+- Scan quality depends on upstream scraper output.
+- Posts without parseable IDs are dropped.
+- Enrichment is bounded/rate-limited.
+- No database is required.
+- Frontend state is mostly local/browser + small JSON files.
+
+---
 
 ## Verification
 
-- `python -m pytest tests/ -q`
-- `python -m x_brief.pipeline configs/example.json --from-scans --hours 36`
-- `cd web && npm run lint`
+```bash
+python3 -m pytest tests/ -q
+python -m x_brief.pipeline configs/example.json --from-scans --hours 36
+cd web && npm run build
+```
