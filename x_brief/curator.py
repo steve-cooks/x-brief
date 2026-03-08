@@ -1,4 +1,10 @@
-"""Content curation and briefing assembly for X Brief."""
+"""Curation engine for assembling the 3-tab X Brief output.
+
+WHY: the product promise is "5 useful minutes, then get off the app." This
+module enforces breadth (topic clustering), substance (density-aware scoring),
+and anti-dopamine guards (Can't Miss quality gates) so briefs stay genuinely
+useful instead of becoming another engagement feed.
+"""
 
 from collections import Counter
 from datetime import datetime, timezone
@@ -131,9 +137,13 @@ def _is_following_post(post: Post, tracked_accounts_set: set[str]) -> bool:
 
 
 def _is_cant_miss(post: Post) -> bool:
-    """A post is Can't Miss if it has extreme engagement AND substance.
-    Pure virality (shitposts from mega-accounts) is not enough.
-    Uses engagement-to-view ratio to filter low-quality viral posts."""
+    """Gate for globally important posts.
+
+    WHY: this tab should feel rare and trustworthy. A post must clear all three
+    bars: substantial content (density), extreme absolute reach, and quality
+    interaction ratio (bookmarks+replies vs likes). This blocks hollow
+    fame-driven virality from dominating the brief.
+    """
     m = post.metrics
     density = information_density_score(post)
 
@@ -237,6 +247,11 @@ def _select_cluster_best(cluster: list[Post], scores: dict[str, float]) -> Post:
 
 
 def _topic_diverse_ranked(posts: list[Post], scores: dict[str, float]) -> list[Post]:
+    """Return one best post per topic cluster, globally ranked by score.
+
+    WHY: without this step, one announcement can occupy multiple slots and
+    destroy briefing breadth.
+    """
     clusters = cluster_posts_by_topic(posts)
     winners = [_select_cluster_best(cluster, scores) for cluster in clusters]
     return sorted(winners, key=lambda p: scores.get(p.id, 0.0), reverse=True)
@@ -251,7 +266,16 @@ def curate_briefing(
     search_posts: list[Post] | None = None,
     reemergent_post_ids: set[str] | None = None,
 ) -> Briefing:
-    """Build a structured briefing with 3 sections: Can't Miss, For You, Following."""
+    """Build the final 3-tab briefing contract consumed by the web UI.
+
+    WHY this order matters:
+    1) Can't Miss claims the rare globally significant items first.
+    2) For You then fills with interest-matched, topic-diverse substance.
+    3) Following rounds out with posts from intentionally tracked voices.
+
+    Selected IDs are excluded from later tabs so users do not re-read the same
+    post across sections.
+    """
     now = datetime.now(timezone.utc)
     tracked_accounts_set = {a.lower().lstrip("@") for a in (tracked_accounts or []) if a}
     reemergent_post_ids = reemergent_post_ids or set()

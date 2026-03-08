@@ -1,5 +1,9 @@
-"""
-Read and parse Rabbit timeline scan JSON files into Post objects.
+"""Ingest timeline scan JSON into normalized Post objects.
+
+WHY: scan data quality is inconsistent across runs and scraper versions. This
+module is intentionally defensive so one malformed file/post does not block the
+brief. It normalizes timestamps, metrics, media, quoted content, and source
+fields into a stable internal contract.
 """
 import json
 import re
@@ -283,7 +287,11 @@ def _thread_connected(prev: Post, cur: Post) -> bool:
 
 
 def annotate_threads(posts: list[Post]) -> None:
-    """Populate thread_posts for likely thread chains from same author."""
+    """Link likely thread chains for richer context in briefing cards.
+
+    WHY: scan payloads often contain disconnected posts; grouping thread parts
+    helps users understand complete ideas without opening X.
+    """
     if len(posts) < 2:
         return
 
@@ -557,15 +565,18 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
 
 
 def load_scan_posts(scan_dir: str, hours: int = 48) -> tuple[list[Post], dict[str, bool]]:
-    """
-    Load posts from Rabbit timeline scan JSON files.
-    
+    """Load recent scan snapshots and return unique posts.
+
+    WHY: scans arrive as overlapping snapshots. We keep first-seen post IDs to
+    avoid replay churn, continue past invalid JSON files, and carry forward
+    verification hints from scan metadata when available.
+
     Args:
-        scan_dir: Directory containing scan JSON files (YYYY-MM-DD-HH.json format)
-        hours: Only load scans from the last N hours
-    
+        scan_dir: Directory containing scan JSON snapshots.
+        hours: Include only scans newer than this window.
+
     Returns:
-        Tuple of (list of Post objects deduplicated by post ID, dict of username->verified from scan data)
+        (deduplicated posts, username->verified flags from scan data)
     """
     scan_path = Path(scan_dir).expanduser()
     if not scan_path.exists():

@@ -1,4 +1,9 @@
-"""End-to-end briefing pipeline for X Brief."""
+"""End-to-end scan → brief pipeline orchestrator.
+
+WHY: keep the system local, deterministic, and simple to operate. This module
+coordinates parsing, dedup history, curation, JSON export for the web app,
+optional enrichment, and pipeline health reporting for observability.
+"""
 import argparse
 import asyncio
 import json
@@ -95,13 +100,16 @@ async def run_briefing_from_scans(
     hours: int = 36,
     skip_dedup: bool = False,
 ) -> str:
-    """
-    Pipeline that reads timeline scan data and generates a briefing.
+    """Generate a fresh briefing from recent scan snapshots.
+
+    WHY: scan files are append-only snapshots from timeline capture. We merge and
+    deduplicate them into one coherent brief, track failures/success in
+    `pipeline-status.json`, and emit `latest-briefing.json` for the frontend.
 
     Args:
-        config_path: Path to user config (for interests, tracked accounts)
-        scan_dir: Directory with scan JSONs (default: X_BRIEF_SCAN_DIR or ./timeline_scans/)
-        hours: Only include posts from scans within the last N hours (default 48)
+        config_path: User config path (interests + tracked accounts).
+        scan_dir: Scan JSON directory (defaults to X_BRIEF_SCAN_DIR or ./timeline_scans/).
+        hours: Time window for scan inclusion.
     """
     if scan_dir is None:
         scan_dir = os.environ.get("X_BRIEF_SCAN_DIR", "./timeline_scans/")

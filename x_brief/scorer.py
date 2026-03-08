@@ -1,4 +1,10 @@
-"""Content scoring and deduplication for X Brief."""
+"""Scoring and in-batch dedup logic for X Brief.
+
+WHY: X Brief exists to reduce compulsive scrolling, so ranking cannot optimize for
+raw virality alone. This module intentionally blends engagement with
+information density and removes low-value duplicates, so users get breadth and
+substance in minutes instead of doomscrolling for hours.
+"""
 
 import re
 from typing import Literal
@@ -7,13 +13,16 @@ from .models import Post
 
 
 def deduplicate(posts: list[Post], section: str = "general") -> list[Post]:
-    """
-    Remove exact duplicates and group reposts/quotes.
-    Returns unique posts, preferring originals over reposts.
+    """Drop redundant posts before scoring.
+
+    WHY: duplicate or near-duplicate items waste the user's limited attention.
+    We prefer original posts over repost wrappers and keep only the strongest
+    quote of the same source URL so each slot in the briefing adds new value.
 
     Args:
-        posts: List of posts to deduplicate
-        section: Section name for filtering rules ("for_you" or "general")
+        posts: Candidate posts from scan and optional search sources.
+        section: Optional mode-specific filters (e.g., stricter quality floor for
+            "for_you").
     """
     seen_ids = set()
     seen_text = set()
@@ -94,7 +103,12 @@ def normalize_engagement_scores(posts: list[Post]) -> dict[str, float]:
 
 
 def information_density_score(post: Post) -> float:
-    """Compute information density score on a 0-20 scale."""
+    """Estimate how much reusable signal a post contains (0-20).
+
+    WHY: high-engagement posts are often lightweight entertainment. Density
+    rewards links, articles, threads, richer context, and media while penalizing
+    short hot takes with no substance.
+    """
     density = 0.0
     text = post.text or ""
     text_len = len(text.strip())
@@ -125,7 +139,14 @@ def score_post(
     normalized_engagement: float,
     tab: Literal["cant_miss", "for_you", "following"],
 ) -> float:
-    """Final per-tab score from normalized engagement + density."""
+    """Compute the final rank score with tab-specific intent.
+
+    WHY: each tab has a different job:
+    - Can't Miss: still engagement-led, but with a density boost to avoid empty
+      celebrity virality.
+    - For You: density-forward to prioritize useful, actionable posts.
+    - Following: balanced relevance for people the user intentionally follows.
+    """
     if tab == "cant_miss":
         # Even within Can't Miss, rank by engagement weighted with density
         # so substantive posts rank above shallow ones
