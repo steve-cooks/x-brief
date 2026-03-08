@@ -404,30 +404,28 @@ export function BriefingView() {
           <Tabs key={briefing.generated_at} value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="sticky top-12 sm:top-[54px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
               <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
-                <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex flex-nowrap">
-                  {availableTabs.map((tab) => (
-                    <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
-                      className="relative flex-1 min-w-0 py-3 sm:py-4 px-2 sm:px-3 rounded-none border-0 bg-transparent text-sm sm:text-[15px] font-medium text-muted-foreground hover:bg-foreground/[0.03] data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-12 sm:after:w-14 after:h-1 after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
-                    >
-                      <span className="text-sm sm:text-[15px] whitespace-nowrap">{tab.label}</span>
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
-
-              <div className="max-w-[598px] mx-auto px-4 pb-3">
-                <div className="flex items-center justify-end gap-2">
-                  {!searchExpanded ? (
-                    <button
-                      type="button"
-                      onClick={() => setSearchExpanded(true)}
-                      className="h-8 w-8 rounded-full border border-border text-muted-foreground hover:text-[#1d9bf0] hover:border-[#1d9bf0]/40 transition-colors flex items-center justify-center"
-                      aria-label="Search posts"
-                    >
-                      <Search className="h-4 w-4" />
-                    </button>
+                <div className="flex items-center">
+                  <TabsList className="flex-1 h-auto p-0 bg-transparent rounded-none border-0 flex flex-nowrap">
+                    {availableTabs.map((tab) => (
+                      <TabsTrigger
+                        key={tab.id}
+                        value={tab.id}
+                        className="relative flex-1 min-w-0 py-3 sm:py-4 px-2 sm:px-3 rounded-none border-0 bg-transparent text-sm sm:text-[15px] font-medium text-muted-foreground hover:bg-foreground/[0.03] data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-12 sm:after:w-14 after:h-1 after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
+                      >
+                        <span className="text-sm sm:text-[15px] whitespace-nowrap">{tab.label}</span>
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                  <div className="flex-shrink-0 px-2">
+                    {!searchExpanded ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearchExpanded(true)}
+                        className="h-8 w-8 rounded-full border border-border text-muted-foreground hover:text-[#1d9bf0] hover:border-[#1d9bf0]/40 transition-colors flex items-center justify-center"
+                        aria-label="Search posts"
+                      >
+                        <Search className="h-4 w-4" />
+                      </button>
                   ) : (
                     <div className="flex items-center gap-2 w-full">
                       <div className="relative flex-1">
@@ -462,6 +460,7 @@ export function BriefingView() {
                       </button>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             </div>
