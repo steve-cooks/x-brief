@@ -32,7 +32,7 @@ If nothing important happened, that is a good outcome too.
 scan timeline JSON
    → score (engagement + information density)
    → curate (topic clustering + quality gates)
-   → enrich (media, quote/link cards)
+   → enrich (full text, media, quotes, link cards)
    → serve (web UI + JSON API)
 ```
 
@@ -224,7 +224,7 @@ web/            Next.js UI + API routes
 - **Backend:** Python 3.10+, Click, Pydantic
 - **Frontend:** Next.js (App Router), React, TypeScript, Tailwind, shadcn/ui
 - **Storage:** local JSON files (no DB required)
-- **Enrichment:** X syndication endpoint for richer media/quote data
+- **Enrichment:** X syndication endpoint for full post text, media, quote tweets, link cards, and avatars
 
 ---
 

@@ -30,7 +30,7 @@ timeline_scans/*.json
 - `scorer.py` — engagement+density scoring, in-batch dedup
 - `curator.py` — 3-tab curation (Can't Miss / For You / Following)
 - `dedup.py` — brief-history filtering + re-emergence logic
-- `enrichment.py` — optional syndication enrichment
+- `enrichment.py` — syndication enrichment (full post text, media, quotes, link cards, avatars)
 - `pipeline.py` — orchestrates full run and writes artifacts
 - `cli.py` — `init`, `brief`, `run` commands
 

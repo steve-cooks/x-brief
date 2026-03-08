@@ -140,6 +140,19 @@ Purpose: reinforce "quick brief then leave" behavior.
 
 ---
 
+## Text enrichment
+
+Timeline scans capture truncated post text (X only shows ~280 chars in the feed).
+The enrichment step replaces all post text with the full version from the syndication API.
+
+Additionally, scanner-injected alt-text brackets (e.g. `[screenshot shows...]`, `[quoting...]`,
+`[Video post - ...]`) are stripped at ingest time in `scan_reader.py`. Only the author's
+actual text is stored and displayed.
+
+Trailing `t.co` tracking URLs are also removed during enrichment.
+
+---
+
 ## Notes on intentional non-features
 
 - No embeddings/ML infrastructure (speed + simplicity)
