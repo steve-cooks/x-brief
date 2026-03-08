@@ -170,10 +170,8 @@ export function PostCard({
   const [textExpanded, setTextExpanded] = useState(false)
   const [threadExpanded, setThreadExpanded] = useState(false)
 
-  // Detect truncation: either text exceeds our limit, or the scan data was already truncated
-  const scanTruncated = text.endsWith("…") || text.endsWith("...")
-  const isLongText = text.length > TRUNCATE_LENGTH || scanTruncated
-  const displayText = !textExpanded && text.length > TRUNCATE_LENGTH ? text.slice(0, TRUNCATE_LENGTH) + "…" : text
+  const isLongText = text.length > TRUNCATE_LENGTH
+  const displayText = !textExpanded && isLongText ? text.slice(0, TRUNCATE_LENGTH) + "…" : text
 
   const initials = authorName
     .split(" ")
@@ -258,12 +256,7 @@ export function PostCard({
                 className="text-[#1d9bf0] hover:underline ml-1 text-[15px]"
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (scanTruncated && postUrl) {
-                    // Text was truncated at scan time — open the full post on X
-                    window.open(postUrl, "_blank", "noopener,noreferrer")
-                  } else {
-                    setTextExpanded(true)
-                  }
+                  setTextExpanded(true)
                 }}
               >
                 Show more
