@@ -82,8 +82,7 @@ const SECTION_DISPLAY: Record<string, { label: string; id: string }> = {
   "FOLLOWING 👥": { label: "Following", id: "following" },
 }
 
-const TAB_ORDER = ["viral", "top_picks", "following", "saved"]
-const SAVED_FALLBACK_KEY = "x-brief-saved-post-urls"
+const TAB_ORDER = ["viral", "top_picks", "following"]
 
 function formatStat(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -144,25 +143,6 @@ function postIdFromUrl(postUrl?: string): string | null {
   return match ? match[1] : null
 }
 
-function loadSavedFallback(): string[] {
-  try {
-    const raw = localStorage.getItem(SAVED_FALLBACK_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((url) => typeof url === "string") : []
-  } catch {
-    return []
-  }
-}
-
-function saveSavedFallback(urls: string[]) {
-  try {
-    localStorage.setItem(SAVED_FALLBACK_KEY, JSON.stringify(urls))
-  } catch {
-    // ignore
-  }
-}
-
 export function BriefingView() {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -170,7 +150,6 @@ export function BriefingView() {
   const [minutesAgo, setMinutesAgo] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<string>("")
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
-  const [savedUrls, setSavedUrls] = useState<Set<string>>(new Set())
   const [searchExpanded, setSearchExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [mediaViewer, setMediaViewer] = useState<{
@@ -188,9 +167,6 @@ export function BriefingView() {
       const localRead = getReadPostIds()
       setReadIds(localRead)
 
-      const localSaved = new Set(loadSavedFallback())
-      setSavedUrls(localSaved)
-
       try {
         const response = await fetch("/api/read-state", { cache: "no-store" })
         if (response.ok) {
@@ -198,23 +174,6 @@ export function BriefingView() {
           const serverIds = Array.isArray(data?.ids) ? data.ids.filter((id: unknown) => typeof id === "string") : []
           if (!cancelled) {
             setReadIds(new Set([...localRead, ...serverIds]))
-          }
-        }
-      } catch {
-        // localStorage fallback already loaded
-      }
-
-      try {
-        const response = await fetch("/api/saved", { cache: "no-store" })
-        if (response.ok) {
-          const data = await response.json()
-          const serverUrls = Array.isArray(data?.urls)
-            ? data.urls.filter((url: unknown) => typeof url === "string")
-            : []
-          const merged = new Set([...localSaved, ...serverUrls])
-          if (!cancelled) {
-            setSavedUrls(merged)
-            saveSavedFallback(Array.from(merged))
           }
         }
       } catch {
@@ -333,25 +292,6 @@ export function BriefingView() {
     [normalizedSearch]
   )
 
-  const allPosts = useMemo(() => {
-    if (!briefing) return [] as Post[]
-    const seen = new Set<string>()
-    const result: Post[] = []
-    for (const section of briefing.sections) {
-      for (const post of section.posts) {
-        const key = post.postUrl || `${post.authorUsername}:${post.text.slice(0, 120)}`
-        if (seen.has(key)) continue
-        seen.add(key)
-        result.push(post)
-      }
-    }
-    return result
-  }, [briefing])
-
-  const savedPosts = useMemo(() => {
-    return allPosts.filter((post) => post.postUrl && savedUrls.has(post.postUrl) && matchesSearch(post))
-  }, [allPosts, matchesSearch, savedUrls])
-
   const availableTabs = useMemo(() => {
     if (!briefing) return [] as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number }>
 
@@ -367,7 +307,6 @@ export function BriefingView() {
 
         const basePosts = unread.length > 0 ? unread : s.posts
         const postsToShow = basePosts.filter(matchesSearch)
-        if (postsToShow.length === 0) return null
 
         return {
           ...display,
@@ -378,20 +317,12 @@ export function BriefingView() {
       })
       .filter(Boolean) as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number }>
 
-    dynamicTabs.push({
-      label: "Saved",
-      id: "saved",
-      posts: savedPosts,
-      count: savedPosts.length,
-      totalCount: savedPosts.length,
-    })
-
     return dynamicTabs.sort((a, b) => {
       const ai = TAB_ORDER.indexOf(a.id)
       const bi = TAB_ORDER.indexOf(b.id)
       return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
     })
-  }, [briefing, matchesSearch, readIds, savedPosts])
+  }, [briefing, matchesSearch, readIds])
 
   useEffect(() => {
     if (availableTabs.length === 0) return
@@ -413,26 +344,6 @@ export function BriefingView() {
     onTabChange: handleTabChange,
     enabled: availableTabs.length > 1,
   })
-
-  const savePost = useCallback(async (postUrl: string) => {
-    setSavedUrls((prev) => {
-      if (prev.has(postUrl)) return prev
-      const next = new Set(prev)
-      next.add(postUrl)
-      saveSavedFallback(Array.from(next))
-      return next
-    })
-
-    try {
-      await fetch("/api/saved", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ urls: [postUrl] }),
-      })
-    } catch {
-      // local fallback already persisted
-    }
-  }, [])
 
   const isStale = minutesAgo > 480
   const staleHours = Math.floor(minutesAgo / 60)
@@ -570,9 +481,7 @@ export function BriefingView() {
                   className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
                 >
                   {tab.posts.length === 0 ? (
-                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      {tab.id === "saved" ? "No saved posts yet." : "No posts match your search."}
-                    </div>
+                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">No posts match your search.</div>
                   ) : (
                     <div>
                       {tab.posts.map((post, index) => {
@@ -596,8 +505,6 @@ export function BriefingView() {
                           >
                             <PostCard
                               {...post}
-                              isSaved={!!post.postUrl && savedUrls.has(post.postUrl)}
-                              onToggleSaved={(url) => void savePost(url)}
                               onMediaOpen={(items, idx) => {
                                 trackEvent("media_open", { postId: pid || post.authorUsername })
                                 setMediaViewer({ items, index: idx })

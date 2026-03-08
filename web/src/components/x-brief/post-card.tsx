@@ -1,6 +1,6 @@
 "use client"
 
-import { Bookmark } from "lucide-react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useMemo, useState } from "react"
 import { RichText, parsePostText } from "@/components/x-brief/rich-text"
@@ -145,8 +145,6 @@ interface PostCardProps {
   quotedPost?: QuotedPostData
   linkCard?: LinkCardData
   onMediaOpen?: (items: MediaItem[], index: number) => void
-  onToggleSaved?: (postUrl: string) => void
-  isSaved?: boolean
 }
 
 const TRUNCATE_LENGTH = 280
@@ -168,10 +166,9 @@ export function PostCard({
   quotedPost,
   linkCard,
   onMediaOpen,
-  onToggleSaved,
-  isSaved,
 }: PostCardProps) {
   const [textExpanded, setTextExpanded] = useState(false)
+  const [threadExpanded, setThreadExpanded] = useState(false)
 
   const isLongText = text.length > TRUNCATE_LENGTH
   const displayText = !textExpanded && isLongText ? text.slice(0, TRUNCATE_LENGTH) + "…" : text
@@ -226,24 +223,6 @@ export function PostCard({
               <span className="text-[15px] leading-5 text-muted-foreground flex-shrink-0">{displayTime}</span>
             </>
           )}
-          {postUrl && onToggleSaved && (
-            <button
-              type="button"
-              aria-label={isSaved ? "Saved for later" : "Save for later"}
-              title={isSaved ? "Saved for later" : "Save for later"}
-              className={`ml-auto rounded-full p-1 transition-colors ${
-                isSaved
-                  ? "text-[#1d9bf0] bg-[#1d9bf0]/10"
-                  : "text-muted-foreground hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleSaved(postUrl)
-              }}
-            >
-              <Bookmark className={`h-4 w-4 ${isSaved ? "fill-current" : ""}`} />
-            </button>
-          )}
         </div>
 
         {(is_article || (thread_posts && thread_posts.length > 0)) && (
@@ -254,9 +233,17 @@ export function PostCard({
               </span>
             )}
             {thread_posts && thread_posts.length > 0 && (
-              <span className="inline-flex items-center rounded-full border border-border bg-accent px-2 py-0.5 text-[11px] font-medium text-foreground">
-                Thread ({thread_posts.length + 1} posts)
-              </span>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-accent px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-foreground/[0.06]"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setThreadExpanded((prev) => !prev)
+                }}
+              >
+                <span>Thread · {thread_posts.length + 1} posts</span>
+                {threadExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
             )}
           </div>
         )}
@@ -283,10 +270,13 @@ export function PostCard({
         {firstUrl && !hasLinkCard && <SimpleLinkCard url={firstUrl} />}
         {is_article && article_url && !hasLinkCard && <SimpleLinkCard url={article_url} />}
         {quotedPost && <QuotedPost post={quotedPost} />}
-        {thread_posts && thread_posts.length > 0 && (
-          <div className="mt-3 space-y-2 border-l-2 border-border pl-3">
+        {threadExpanded && thread_posts && thread_posts.length > 0 && (
+          <div className="mt-2 space-y-1 border-l-2 border-border pl-3">
             {thread_posts.map((threadPost, index) => (
-              <div key={threadPost.id || `${threadPost.url || "thread"}-${index}`} className="text-[14px] leading-5 text-muted-foreground">
+              <div
+                key={threadPost.id || `${threadPost.url || "thread"}-${index}`}
+                className="rounded-md px-2 py-1 text-[13px] leading-4 text-muted-foreground bg-muted/30"
+              >
                 <RichText text={threadPost.text} />
                 {threadPost.url && (
                   <button

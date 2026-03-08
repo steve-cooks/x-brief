@@ -1,4 +1,4 @@
-import { Bookmark, Eye, Heart, MessageCircle, Repeat2, Share } from "lucide-react"
+import { Bookmark, Eye, Heart, MessageCircle, Repeat2 } from "lucide-react"
 
 export interface PostMetrics {
   likes?: number
@@ -15,58 +15,57 @@ function formatNumber(num: number): string {
 }
 
 export function MetricsBar({ metrics }: { metrics: PostMetrics }) {
+  const items = [
+    {
+      key: "replies",
+      value: metrics.replies ?? 0,
+      Icon: MessageCircle,
+      className: "hover:text-[#1d9bf0]",
+      iconBgClass: "group-hover/metric:bg-[#1d9bf0]/10",
+    },
+    {
+      key: "reposts",
+      value: metrics.reposts ?? 0,
+      Icon: Repeat2,
+      className: "hover:text-[#00ba7c]",
+      iconBgClass: "group-hover/metric:bg-[#00ba7c]/10",
+    },
+    {
+      key: "likes",
+      value: metrics.likes ?? 0,
+      Icon: Heart,
+      className: "hover:text-[#f91880]",
+      iconBgClass: "group-hover/metric:bg-[#f91880]/10",
+    },
+    {
+      key: "bookmarks",
+      value: metrics.bookmarks ?? 0,
+      Icon: Bookmark,
+      className: "hover:text-[#1d9bf0]",
+      iconBgClass: "group-hover/metric:bg-[#1d9bf0]/10",
+    },
+    {
+      key: "views",
+      value: metrics.views ?? 0,
+      Icon: Eye,
+      className: "hover:text-[#1d9bf0]",
+      iconBgClass: "group-hover/metric:bg-[#1d9bf0]/10",
+    },
+  ]
+
   return (
-    <div className="mt-1 flex items-center justify-between max-w-full">
-      <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#1d9bf0] cursor-pointer">
-        <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
-          <MessageCircle className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
+    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 max-w-full">
+      {items.map(({ key, value, Icon, className, iconBgClass }) => (
+        <div
+          key={key}
+          className={`group/metric flex items-center gap-0.5 text-muted-foreground p-1 transition-colors cursor-pointer ${className}`}
+        >
+          <div className={`rounded-full p-1 -m-1 transition-colors ${iconBgClass}`}>
+            <Icon className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
+          </div>
+          <span className="text-[12px] sm:text-[13px] leading-4">{formatNumber(value)}</span>
         </div>
-        {(metrics.replies ?? 0) > 0 && (
-          <span className="text-[12px] sm:text-[13px] leading-4">{formatNumber(metrics.replies!)}</span>
-        )}
-      </div>
-
-      <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#00ba7c] cursor-pointer">
-        <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#00ba7c]/10">
-          <Repeat2 className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
-        </div>
-        {(metrics.reposts ?? 0) > 0 && (
-          <span className="text-[12px] sm:text-[13px] leading-4">{formatNumber(metrics.reposts!)}</span>
-        )}
-      </div>
-
-      <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#f91880] cursor-pointer">
-        <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#f91880]/10">
-          <Heart className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
-        </div>
-        {(metrics.likes ?? 0) > 0 && (
-          <span className="text-[12px] sm:text-[13px] leading-4">{formatNumber(metrics.likes!)}</span>
-        )}
-      </div>
-
-      <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#1d9bf0] cursor-pointer">
-        <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
-          <Eye className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
-        </div>
-        {(metrics.views ?? 0) > 0 && (
-          <span className="text-[12px] sm:text-[13px] leading-4">{formatNumber(metrics.views!)}</span>
-        )}
-      </div>
-
-      <div className="group/metric flex items-center gap-0.5 text-muted-foreground p-1.5 transition-colors hover:text-[#1d9bf0] cursor-pointer">
-        <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
-          <Bookmark className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
-        </div>
-        {(metrics.bookmarks ?? 0) > 0 && (
-          <span className="text-[12px] sm:text-[13px] leading-4">{formatNumber(metrics.bookmarks!)}</span>
-        )}
-      </div>
-
-      <div className="group/metric hidden sm:flex items-center text-muted-foreground p-1.5 transition-colors hover:text-[#1d9bf0] cursor-pointer">
-        <div className="rounded-full p-1 -m-1 transition-colors group-hover/metric:bg-[#1d9bf0]/10">
-          <Share className="h-4 w-4 sm:h-[18.75px] sm:w-[18.75px]" />
-        </div>
-      </div>
+      ))}
     </div>
   )
 }
