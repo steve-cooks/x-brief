@@ -127,7 +127,10 @@ def score_post(
 ) -> float:
     """Final per-tab score from normalized engagement + density."""
     if tab == "cant_miss":
-        return normalized_engagement
+        # Even within Can't Miss, rank by engagement weighted with density
+        # so substantive posts rank above shallow ones
+        density = information_density_score(post)
+        return (normalized_engagement * 0.7) + (density * 0.3)
 
     density = information_density_score(post)
     if tab == "for_you":

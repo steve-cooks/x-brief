@@ -131,8 +131,28 @@ def _is_following_post(post: Post, tracked_accounts_set: set[str]) -> bool:
 
 
 def _is_cant_miss(post: Post) -> bool:
+    """A post is Can't Miss if it has extreme engagement AND substance.
+    Pure virality (shitposts from mega-accounts) is not enough.
+    Uses engagement-to-view ratio to filter low-quality viral posts."""
     m = post.metrics
-    return m.views > 500_000 and m.likes > 10_000
+    density = information_density_score(post)
+
+    # Gate 1: Must have substance (density >= 3 means has a link, thread, or real content)
+    if density < 3:
+        return False
+
+    # Gate 2: Must have strong absolute engagement
+    if m.likes < 10_000 or m.views < 500_000:
+        return False
+
+    # Gate 3: Quality ratio — bookmarks+replies relative to likes
+    # High bookmark ratio = people saving it (useful). High reply ratio = discussion (substance).
+    # Shitposts get lots of likes but few bookmarks/replies relative to likes.
+    quality_signals = m.bookmarks + m.replies
+    if m.likes > 0 and quality_signals / m.likes < 0.05:
+        return False
+
+    return True
 
 
 def extract_topic_tokens(post: Post) -> tuple[set[str], set[str]]:
@@ -252,6 +272,17 @@ def curate_briefing(
         key=lambda p: score_post(p, engagement_map.get(p.id, 0.0), tab="cant_miss"),
         reverse=True,
     )
+    # Max 1 per author in Can't Miss
+    cant_miss_selected: list[Post] = []
+    cant_miss_authors: set[str] = set()
+    for p in cant_miss_scored:
+        if p.author_id in cant_miss_authors:
+            continue
+        cant_miss_selected.append(p)
+        cant_miss_authors.add(p.author_id)
+        if len(cant_miss_selected) >= 5:
+            break
+
     cant_miss_items = [
         BriefingItem(
             post=p,
@@ -259,7 +290,7 @@ def curate_briefing(
             category="Can't Miss",
             score=score_post(p, engagement_map.get(p.id, 0.0), tab="cant_miss"),
         )
-        for p in cant_miss_scored[:5]
+        for p in cant_miss_selected
     ]
     sections.append(BriefingSection(title="Can't Miss 🔥", emoji="🔥", items=cant_miss_items))
     selected_ids.update(item.post.id for item in cant_miss_items)

@@ -105,6 +105,9 @@ def test_final_tab_scores_weight_density_for_for_you() -> None:
     for_you_score = score_post(post, engagement, tab="for_you")
     following_score = score_post(post, engagement, tab="following")
 
-    assert cant_miss_score == 80.0
+    # Can't Miss now uses 0.7*engagement + 0.3*density
+    # Post has 300 chars (+2 density) + URL (+3 density) = 5 density
+    # 80 * 0.7 + 5 * 0.3 = 56 + 1.5 = 57.5
+    assert cant_miss_score == 57.5
     assert for_you_score < cant_miss_score
     assert following_score < cant_miss_score

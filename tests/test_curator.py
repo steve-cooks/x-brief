@@ -106,12 +106,15 @@ def test_curate_briefing_builds_all_three_tabs_with_priority() -> None:
         make_post(
             "cant-miss",
             "big-author",
-            "Global event everyone is talking about",
+            "Global event everyone is talking about — a detailed thread on the massive implications for the industry and what comes next for everyone involved in this space. Truly historic moment.",
             likes=25_000,
             reposts=7_000,
+            replies=2_000,
             views=3_000_000,
             bookmarks=2_000,
             source="for_you",
+            urls=["https://example.com/article"],
+            thread_len=3,
         ),
         make_post(
             "for-you-1",
@@ -205,11 +208,15 @@ def test_reemergent_posts_only_allowed_in_cant_miss() -> None:
     post = make_post(
         "reemerge",
         "author-a",
-        "AI update",
+        "Major AI update — comprehensive breakdown of the new capabilities and what this means for developers building with these tools. Thread with full analysis and benchmarks.",
         likes=20_000,
         reposts=5_000,
+        replies=3_000,
         views=2_000_000,
+        bookmarks=2_500,
         source="following",
+        urls=["https://example.com/ai-update"],
+        thread_len=4,
     )
 
     briefing = curate_briefing(
