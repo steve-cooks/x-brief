@@ -13,6 +13,8 @@ def make_post(
     reposts: int,
     views: int,
     replies: int = 2,
+    bookmarks: int = 0,
+    source: str | None = None,
     quotes: int = 0,
     urls: list[str] | None = None,
     created_at: datetime | None = None,
@@ -30,8 +32,10 @@ def make_post(
             replies=replies,
             views=views,
             quotes=quotes,
+            bookmarks=bookmarks,
         ),
         urls=urls or [],
+        source=source,
     )
 
 
@@ -57,106 +61,75 @@ def test_detect_network_amplification_requires_three_unique_referrers() -> None:
     assert boosts == {"999": 3.0}
 
 
-def test_curate_briefing_builds_expected_sections_from_mixed_posts() -> None:
+def test_curate_briefing_builds_three_expected_sections() -> None:
     posts = [
         make_post(
-            "top-1",
-            "tracked-top",
-            "Detailed product launch with meaningful context for top stories readers.",
-            likes=1_800,
-            reposts=240,
-            views=180_000,
-        ),
-        make_post(
-            "circle-1",
-            "tracked-circle",
-            "Claude and OpenAI coding workflows keep improving for small teams.",
-            likes=18,
-            reposts=3,
-            views=350,
-        ),
-        make_post(
-            "article-1",
-            "tracked-article",
-            "Read this https://example.com/deep-dive",
-            likes=900,
-            reposts=70,
-            views=75_000,
-            urls=["https://example.com/deep-dive"],
-        ),
-        make_post(
-            "worth-1",
-            "tracked-worth",
-            "Quiet but useful workflow tip that still deserves to show up later.",
-            likes=12,
-            reposts=2,
-            views=240,
-        ),
-    ]
-    search_posts = [
-        make_post(
             "viral-1",
-            "search-viral",
+            "big-author",
             "Huge launch day post.",
             likes=25_000,
             reposts=7_000,
             views=3_000_000,
+            bookmarks=4_200,
+            source="for_you",
         ),
         make_post(
-            "trend-1",
-            "search-trend",
-            "Design systems are changing quickly this month.",
-            likes=80,
-            reposts=12,
-            views=9_000,
+            "top-1",
+            "niche-author",
+            "Claude and OpenAI coding workflows keep improving for small teams.",
+            likes=400,
+            reposts=80,
+            views=100_000,
+            replies=380,
+            bookmarks=460,
+            source="for_you",
+        ),
+        make_post(
+            "follow-1",
+            "tracked-person",
+            "Daily update from someone I follow.",
+            likes=220,
+            reposts=25,
+            views=45_000,
+            replies=100,
+            bookmarks=140,
+            source="following",
         ),
     ]
     users = {
-        "tracked-top": make_user("tracked-top", followers_count=40_000),
-        "tracked-circle": make_user("tracked-circle", followers_count=2_500),
-        "tracked-article": make_user("tracked-article", followers_count=15_000),
-        "tracked-worth": make_user("tracked-worth", followers_count=1_200),
-        "search-viral": make_user("search-viral", followers_count=900_000),
-        "search-trend": make_user("search-trend", followers_count=30_000),
+        "big-author": make_user("big-author", followers_count=900_000),
+        "niche-author": make_user("niche-author", followers_count=20_000),
+        "tracked-person": make_user("tracked-person", followers_count=15_000),
     }
 
     briefing = curate_briefing(
         posts=posts,
         users=users,
         interests=["AI & Tech"],
-        tracked_accounts=["tracked-circle", "tracked-top", "tracked-article", "tracked-worth"],
+        tracked_accounts=["tracked-person"],
         hours=24,
-        search_posts=search_posts,
+        search_posts=posts,
     )
 
     titles = [section.title for section in briefing.sections]
 
-    assert titles == [
-        "VIRAL 🔥",
-        "TOP STORIES",
-        "YOUR CIRCLE",
-        "TRENDING IN YOUR NICHES",
-        "ARTICLES & THREADS",
-        "WORTH A LOOK",
-    ]
+    assert titles == ["VIRAL 🔥", "TOP PICKS 📌", "FOLLOWING 👥"]
     assert briefing.sections[0].items[0].post.id == "viral-1"
     assert briefing.sections[1].items[0].post.id == "top-1"
-    assert briefing.sections[2].items[0].post.id == "circle-1"
-    assert briefing.sections[3].items[0].post.id == "trend-1"
-    assert briefing.sections[4].items[0].post.id == "article-1"
-    assert briefing.sections[5].items[0].post.id == "worth-1"
+    assert briefing.sections[2].items[0].post.id == "follow-1"
     assert briefing.stats["accounts_tracked"] == len(users)
 
 
-def test_curate_briefing_scan_mode_uses_tracked_accounts_for_your_circle() -> None:
+def test_following_section_falls_back_to_tracked_accounts_when_source_missing() -> None:
     posts = [
         make_post(
-            "circle-scan",
+            "follow-fallback",
             "tracked-person",
-            "Non-keyword update that should still land in circle.",
+            "Non-keyword update that should still land in following.",
             likes=55,
             reposts=5,
             views=6500,
+            source=None,
         )
     ]
     users = {"tracked-person": make_user("tracked-person", followers_count=8_000)}
@@ -170,36 +143,39 @@ def test_curate_briefing_scan_mode_uses_tracked_accounts_for_your_circle() -> No
         search_posts=posts,
     )
 
-    your_circle = next((s for s in briefing.sections if s.title == "YOUR CIRCLE"), None)
-    assert your_circle is not None
-    assert any(item.post.id == "circle-scan" for item in your_circle.items)
+    following = next((s for s in briefing.sections if s.title == "FOLLOWING 👥"), None)
+    assert following is not None
+    assert any(item.post.id == "follow-fallback" for item in following.items)
 
 
-def test_curate_briefing_articles_include_external_urls_from_search_posts() -> None:
+def test_top_picks_prioritizes_replies_and_bookmarks() -> None:
     posts = [
         make_post(
-            "top-regular",
+            "high-quality",
             "author-a",
-            "Internal post",
-            likes=1000,
-            reposts=120,
-            views=200000,
-        )
-    ]
-    search_posts = [
+            "AI builders discussing real implementation details.",
+            likes=260,
+            reposts=30,
+            views=70_000,
+            replies=500,
+            bookmarks=700,
+            source="for_you",
+        ),
         make_post(
-            "search-article",
+            "vanity",
             "author-b",
-            "Long read https://example.org/essay",
-            likes=700,
-            reposts=60,
-            views=70000,
-            urls=["https://example.org/essay"],
-        )
+            "AI hype post.",
+            likes=900,
+            reposts=130,
+            views=300_000,
+            replies=25,
+            bookmarks=20,
+            source="for_you",
+        ),
     ]
     users = {
-        "author-a": make_user("author-a", followers_count=90_000),
-        "author-b": make_user("author-b", followers_count=20_000),
+        "author-a": make_user("author-a", followers_count=12_000),
+        "author-b": make_user("author-b", followers_count=50_000),
     }
 
     briefing = curate_briefing(
@@ -208,9 +184,9 @@ def test_curate_briefing_articles_include_external_urls_from_search_posts() -> N
         interests=["AI & Tech"],
         tracked_accounts=[],
         hours=24,
-        search_posts=search_posts,
+        search_posts=posts,
     )
 
-    articles = next((s for s in briefing.sections if s.title == "ARTICLES & THREADS"), None)
-    assert articles is not None
-    assert any(item.post.id == "search-article" for item in articles.items)
+    top_picks = next((s for s in briefing.sections if s.title == "TOP PICKS 📌"), None)
+    assert top_picks is not None
+    assert top_picks.items[0].post.id == "high-quality"
