@@ -252,6 +252,28 @@ async def enrich_with_syndication_async(json_path: str) -> None:
             return ("error", username, 0)
 
         changes = 0
+
+        # Replace truncated text with full text from syndication.
+        # Syndication often has more text than the timeline-scraped version.
+        synd_text = tweet_data.get("text", "")
+        if synd_text and len(synd_text) > len(post.get("text", "")):
+            # Resolve t.co URLs to display URLs from entities
+            for entity_url in tweet_data.get("entities", {}).get("urls", []):
+                tco = entity_url.get("url", "")
+                display = entity_url.get("expanded_url") or entity_url.get("display_url", "")
+                if tco and display:
+                    synd_text = synd_text.replace(tco, display)
+            post["text"] = synd_text
+            changes += 1
+
+        # Also clean t.co links from existing text if syndication didn't help
+        import re as _re
+        current_text = post.get("text", "")
+        if "https://t.co/" in current_text:
+            # Remove trailing t.co URLs (they're just tracking links)
+            current_text = _re.sub(r'\s*https://t\.co/\S+\s*$', '', current_text).strip()
+            post["text"] = current_text
+
         if not post.get("media"):
             media = _extract_media(tweet_data)
             if media:

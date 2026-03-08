@@ -39,8 +39,8 @@ interface QuotedPostData {
 
 function QuotedPost({ post }: { post: QuotedPostData }) {
   const [expanded, setExpanded] = useState(false)
-  const isLong = post.text.length > 180
-  const displayText = !expanded && isLong ? post.text.slice(0, 180) + "…" : post.text
+  const isLong = false
+  const displayText = post.text
 
   return (
     <div
@@ -170,8 +170,8 @@ export function PostCard({
   const [textExpanded, setTextExpanded] = useState(false)
   const [threadExpanded, setThreadExpanded] = useState(false)
 
-  const isLongText = text.length > TRUNCATE_LENGTH
-  const displayText = !textExpanded && isLongText ? text.slice(0, TRUNCATE_LENGTH) + "…" : text
+  const isLongText = false
+  const displayText = text
 
   const initials = authorName
     .split(" ")
