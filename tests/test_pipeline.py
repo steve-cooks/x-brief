@@ -42,7 +42,7 @@ def make_briefing(post: Post) -> Briefing:
         period_end=now,
         sections=[
             BriefingSection(
-                title="TOP PICKS 📌",
+                title="For You 📌",
                 emoji="📌",
                 items=[
                     BriefingItem(
@@ -92,9 +92,10 @@ def test_run_briefing_from_scans_happy_path_writes_json_output(tmp_path: Path, m
     expected_briefing = make_briefing(post)
     saved_history: dict[str, object] = {}
 
-    def fake_curate_briefing(posts, users, interests, tracked_accounts, hours, search_posts):
+    def fake_curate_briefing(posts, users, interests, tracked_accounts, hours, search_posts, reemergent_post_ids):
         assert posts == [post]
         assert search_posts == [post]
+        assert reemergent_post_ids == set()
         assert interests == ["AI"]
         assert tracked_accounts == ["alice"]
         assert hours == 36
@@ -118,7 +119,7 @@ def test_run_briefing_from_scans_happy_path_writes_json_output(tmp_path: Path, m
         "load_brief_history",
         lambda history_path: {"posts": {}, "last_cleanup": "2026-03-08T00:00:00+00:00"},
     )
-    monkeypatch.setattr(pipeline, "filter_already_briefed", lambda posts, history, max_age_hours=48: posts)
+    monkeypatch.setattr(pipeline, "filter_already_briefed", lambda posts, history, max_age_hours=48: (posts, set()))
     monkeypatch.setattr(pipeline, "curate_briefing", fake_curate_briefing)
     monkeypatch.setattr(pipeline, "format_markdown", lambda briefing: "Brief output")
     monkeypatch.setattr(pipeline, "save_brief_history", fake_save_brief_history)
@@ -136,7 +137,7 @@ def test_run_briefing_from_scans_happy_path_writes_json_output(tmp_path: Path, m
     exported_post = payload["sections"][0]["posts"][0]
 
     assert output == "Brief output"
-    assert payload["sections"][0]["title"] == "TOP PICKS 📌"
+    assert payload["sections"][0]["title"] == "For You 📌"
     assert payload["stats"] == {"accounts_tracked": 1, "posts_analyzed": 1}
     assert exported_post["postUrl"] == "https://x.com/alice/status/101"
     assert re.fullmatch(r"\d+[mhd]", exported_post["timestamp"])
@@ -175,7 +176,7 @@ def test_run_briefing_from_scans_returns_all_posts_already_briefed(tmp_path: Pat
         "load_brief_history",
         lambda history_path: {"posts": {"101": {}}, "last_cleanup": "2026-03-08T00:00:00+00:00"},
     )
-    monkeypatch.setattr(pipeline, "filter_already_briefed", lambda posts, history, max_age_hours=48: [])
+    monkeypatch.setattr(pipeline, "filter_already_briefed", lambda posts, history, max_age_hours=48: ([], set()))
     monkeypatch.setattr(
         pipeline,
         "curate_briefing",
@@ -216,9 +217,10 @@ def test_run_briefing_from_scans_skip_dedup_keeps_posts_and_skips_history_save(
     expected_briefing = make_briefing(all_posts[0])
     save_calls: list[tuple] = []
 
-    def fake_curate_briefing(posts, users, interests, tracked_accounts, hours, search_posts):
+    def fake_curate_briefing(posts, users, interests, tracked_accounts, hours, search_posts, reemergent_post_ids):
         assert posts == all_posts
         assert search_posts == all_posts
+        assert reemergent_post_ids == set()
         assert tracked_accounts == ["alice", "bob"]
         assert set(users) == {"alice", "bob"}
         return expected_briefing

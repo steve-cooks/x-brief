@@ -148,10 +148,11 @@ async def run_briefing_from_scans(
             print("⏭️  Skipping dedup (web app mode)")
             fresh_posts = all_posts
             history = None
+            reemergent_post_ids: set[str] = set()
         else:
             print("🔄 Checking brief history for duplicates...")
             history = load_brief_history(history_path)
-            fresh_posts = filter_already_briefed(all_posts, history, max_age_hours=hours)
+            fresh_posts, reemergent_post_ids = filter_already_briefed(all_posts, history, max_age_hours=hours)
 
             if not fresh_posts:
                 return fail_pipeline("Zero posts after processing (all scanned posts already briefed).")
@@ -167,6 +168,7 @@ async def run_briefing_from_scans(
             tracked_accounts=user_config.tracked_accounts,
             hours=hours,
             search_posts=fresh_posts,  # Treat all scan posts as potential search results too
+            reemergent_post_ids=reemergent_post_ids,
         )
 
         if not briefing.sections:

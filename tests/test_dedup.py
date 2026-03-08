@@ -4,9 +4,19 @@ from datetime import datetime, timedelta, timezone
 from x_brief import dedup
 from x_brief.dedup import cleanup_history, filter_already_briefed, load_brief_history, save_brief_history
 from x_brief.models import Post, PostMetrics
+from x_brief.scorer import raw_engagement_score
 
 
-def make_post(post_id: str, author_username: str = "author") -> Post:
+def make_post(
+    post_id: str,
+    author_username: str = "author",
+    *,
+    likes: int = 10,
+    reposts: int = 1,
+    replies: int = 0,
+    views: int = 100,
+    bookmarks: int = 0,
+) -> Post:
     return Post(
         id=post_id,
         text=f"Post {post_id}",
@@ -14,7 +24,7 @@ def make_post(post_id: str, author_username: str = "author") -> Post:
         author_username=author_username,
         author_name=author_username,
         created_at=datetime.now(timezone.utc) - timedelta(hours=1),
-        metrics=PostMetrics(likes=10, reposts=1, replies=0, views=100),
+        metrics=PostMetrics(likes=likes, reposts=reposts, replies=replies, views=views, bookmarks=bookmarks),
     )
 
 
@@ -34,27 +44,48 @@ def test_save_history_and_filter_already_briefed_round_trip(tmp_path) -> None:
     save_brief_history(str(history_path), history, [first_post], max_age_hours=48)
 
     saved_history = json.loads(history_path.read_text())
-    remaining_posts = filter_already_briefed([first_post, second_post], saved_history, max_age_hours=48)
+    remaining_posts, reemergent = filter_already_briefed([first_post, second_post], saved_history, max_age_hours=48)
 
     assert "1" in saved_history["posts"]
     assert saved_history["posts"]["1"]["url"] == "https://x.com/alice/status/1"
+    assert saved_history["posts"]["1"]["engagement_raw"] == raw_engagement_score(first_post)
     assert [post.id for post in remaining_posts] == ["2"]
+    assert reemergent == set()
 
 
 def test_filter_already_briefed_only_blocks_recent_window() -> None:
     now = datetime.now(timezone.utc)
     history = {
         "posts": {
-            "old": {"briefed_at": (now - timedelta(hours=72)).isoformat()},
-            "fresh": {"briefed_at": (now - timedelta(hours=4)).isoformat()},
+            "old": {"briefed_at": (now - timedelta(hours=72)).isoformat(), "engagement_raw": 100},
+            "fresh": {"briefed_at": (now - timedelta(hours=4)).isoformat(), "engagement_raw": 100},
         },
         "last_cleanup": now.isoformat(),
     }
 
     posts = [make_post("old"), make_post("fresh"), make_post("new")]
-    remaining = filter_already_briefed(posts, history, max_age_hours=48)
+    remaining, _ = filter_already_briefed(posts, history, max_age_hours=48)
 
     assert {p.id for p in remaining} == {"old", "new"}
+
+
+def test_reemergence_allows_return_when_engagement_10x_and_cant_miss() -> None:
+    now = datetime.now(timezone.utc)
+    post = make_post("boom", likes=20_000, reposts=6_000, views=1_500_000)
+    history = {
+        "posts": {
+            "boom": {
+                "briefed_at": (now - timedelta(hours=3)).isoformat(),
+                "engagement_raw": raw_engagement_score(make_post("old-boom", likes=100, reposts=10, views=5_000)),
+            }
+        },
+        "last_cleanup": now.isoformat(),
+    }
+
+    remaining, reemergent = filter_already_briefed([post], history, max_age_hours=48)
+
+    assert [p.id for p in remaining] == ["boom"]
+    assert reemergent == {"boom"}
 
 
 def test_cleanup_history_prunes_entries_older_than_cutoff() -> None:

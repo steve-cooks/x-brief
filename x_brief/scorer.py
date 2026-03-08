@@ -1,222 +1,143 @@
-"""
-Content scoring and deduplication for X Brief
-"""
+"""Content scoring and deduplication for X Brief."""
 
 import re
-import math
-from datetime import datetime, timezone
-from typing import Optional
-from .models import Post, User
+from typing import Literal
 
-
-# Mega-viral thresholds - posts meeting ANY of these are considered mega-viral
-MEGA_VIRAL_VIEWS = 1_000_000
-MEGA_VIRAL_LIKES = 10_000
-MEGA_VIRAL_REPOSTS = 5_000
-
-# Graduated viral thresholds for scoring boosts
-VIRAL_VIEWS_100K = 100_000
-VIRAL_VIEWS_1M = 1_000_000
-VIRAL_VIEWS_10M = 10_000_000
-
-
-def is_mega_viral(post: Post) -> bool:
-    """Check if a post meets mega-viral thresholds."""
-    m = post.metrics
-    return (
-        m.views >= MEGA_VIRAL_VIEWS or
-        m.likes >= MEGA_VIRAL_LIKES or
-        m.reposts >= MEGA_VIRAL_REPOSTS
-    )
-
-
-def get_viral_multiplier(post: Post) -> float:
-    """Get the viral multiplier based on views (graduated scale)."""
-    views = post.metrics.views
-    if views >= VIRAL_VIEWS_10M:
-        return 10.0
-    elif views >= VIRAL_VIEWS_1M:
-        return 5.0
-    elif views >= VIRAL_VIEWS_100K:
-        return 2.0
-    return 1.0
+from .models import Post
 
 
 def deduplicate(posts: list[Post], section: str = "general") -> list[Post]:
     """
-    Remove exact duplicates and group reposts/quotes
-    Returns unique posts, preferring originals over reposts
-    
+    Remove exact duplicates and group reposts/quotes.
+    Returns unique posts, preferring originals over reposts.
+
     Args:
         posts: List of posts to deduplicate
-        section: Section name for filtering rules ("top_picks" or "general")
+        section: Section name for filtering rules ("for_you" or "general")
     """
     seen_ids = set()
     seen_text = set()
     quote_originals = {}  # Map quoted post ID to best quote-tweet
     unique_posts = []
-    
+
     # Sort to process original posts before reposts
     sorted_posts = sorted(posts, key=lambda p: (p.is_repost, p.created_at))
-    
+
     for post in sorted_posts:
-        # Skip if we've seen this exact post ID
         if post.id in seen_ids:
             continue
-        
+
         # Skip reposts that are just "RT @..." format
         if post.is_repost or post.text.strip().startswith("RT @"):
             continue
-        
-        # For Top Picks section: skip very short posts (just emojis/lol)
-        # Check the text after removing URLs and mentions to catch posts like "👀 https://..."
-        if section == "top_picks":
-            # Remove URLs
-            cleaned_text = re.sub(r'https?://\S+', '', post.text)
-            # Remove @mentions
-            cleaned_text = re.sub(r'@\w+', '', cleaned_text)
-            # Clean whitespace
+
+        # For For You section: skip very short posts (just emojis/lol)
+        if section == "for_you":
+            cleaned_text = re.sub(r"https?://\S+", "", post.text)
+            cleaned_text = re.sub(r"@\w+", "", cleaned_text)
             cleaned_text = cleaned_text.strip()
             if len(cleaned_text) < 10:
                 continue
-        
-        # Skip reposts if we've seen the original text
+
         if post.text in seen_text:
             continue
-        
+
         # Group quote-tweets of the same original (keep highest scored one)
-        # Detect if this is a quote-tweet by checking for quoted post patterns
-        quoted_match = re.search(r'https://(?:twitter|x)\.com/\w+/status/(\d+)', post.text)
+        quoted_match = re.search(r"https://(?:twitter|x)\.com/\w+/status/(\d+)", post.text)
         if quoted_match:
             quoted_id = quoted_match.group(1)
-            # Calculate score for comparison (simplified, will be refined later)
-            current_score = post.metrics.likes + post.metrics.reposts * 3
-            
+            current_score = raw_engagement_score(post)
+
             if quoted_id in quote_originals:
                 existing_post, existing_score = quote_originals[quoted_id]
                 if current_score > existing_score:
-                    # Replace with higher scored quote-tweet
                     quote_originals[quoted_id] = (post, current_score)
-                    # Remove the old one from unique_posts
                     if existing_post in unique_posts:
                         unique_posts.remove(existing_post)
                         seen_ids.discard(existing_post.id)
                         seen_text.discard(existing_post.text)
                 else:
-                    continue  # Skip this lower-scored quote-tweet
+                    continue
             else:
                 quote_originals[quoted_id] = (post, current_score)
-        
+
         seen_ids.add(post.id)
         seen_text.add(post.text)
         unique_posts.append(post)
-    
+
     return unique_posts
 
 
-def score_post(post: Post, followers_count: int) -> float:
-    """
-    Calculate engagement velocity score for a post with time decay
-    
-    Formula: weighted engagement with log-scale follower normalization and time decay
-    - views: 0.1 weight
-    - likes: 1 weight
-    - reposts: 3 weight
-    - replies: 2 weight
-    - quotes: 4 weight
-    
-    Time decay factor:
-    - Last 6h: 2x boost
-    - 6-12h: 1.5x boost
-    - 12-24h: 1x (no change)
-    - 24-48h: 0.7x penalty
-    
-    Follower normalization uses log scale so viral posts from small accounts rank higher
-    """
-    metrics = post.metrics
-    
-    # Weighted engagement score
-    engagement = (
-        metrics.views * 0.1 +
-        metrics.likes * 1.0 +
-        metrics.reposts * 3.0 +
-        metrics.replies * 2.0 +
-        metrics.quotes * 4.0
+def raw_engagement_score(post: Post) -> float:
+    """Raw engagement formula from the v2 spec."""
+    m = post.metrics
+    return (
+        (m.likes * 1.0)
+        + (m.reposts * 2.0)
+        + (m.replies * 1.5)
+        + (m.bookmarks * 3.0)
+        + (m.views * 0.01)
     )
-    
-    # Log-scale follower normalization
-    # A post with 100 likes from 500 followers scores higher than 100 likes from 500K followers
-    # Using log10 to compress the follower scale
-    followers = max(followers_count, 1)
-    follower_factor = math.log10(followers + 1)  # +1 to avoid log(0)
-    normalized_score = engagement / max(follower_factor, 1)
-    
-    # Time decay factor — aggressive decay for older posts
-    now = datetime.now(timezone.utc)
-    post_age_hours = (now - post.created_at).total_seconds() / 3600
-
-    if post_age_hours <= 6:
-        time_factor = 2.0
-    elif post_age_hours <= 12:
-        time_factor = 1.5
-    elif post_age_hours <= 24:
-        time_factor = 1.0
-    elif post_age_hours <= 36:
-        time_factor = 0.5
-    elif post_age_hours <= 48:
-        time_factor = 0.3
-    else:  # 48h+
-        time_factor = 0.1
-
-    # Mega-viral posts get softer decay (halve the penalty)
-    if time_factor < 1.0 and is_mega_viral(post):
-        time_factor = 1.0 - (1.0 - time_factor) / 2  # e.g. 0.5 -> 0.75, 0.3 -> 0.65, 0.1 -> 0.55
-
-    normalized_score *= time_factor
-    
-    # Boost for high absolute engagement
-    if metrics.likes > 1000:
-        normalized_score *= 1.5
-    if metrics.reposts > 500:
-        normalized_score *= 1.3
-    
-    # Apply graduated viral multiplier based on views
-    viral_mult = get_viral_multiplier(post)
-    normalized_score *= viral_mult
-    
-    # Additional 5x boost for mega-viral posts (on top of viral multiplier)
-    if is_mega_viral(post):
-        normalized_score *= 5.0
-    
-    return normalized_score
 
 
-def rank_posts(posts: list[Post], users_map: dict[str, User]) -> list[Post]:
-    """
-    Rank posts by engagement score
-    
-    Args:
-        posts: List of posts to rank
-        users_map: Map of user_id -> User for follower counts
-    
-    Returns:
-        Posts sorted by score (highest first)
-    """
-    scored_posts = []
-    
-    for post in posts:
-        # Get author's follower count
-        author = users_map.get(post.author_id)
-        followers = author.followers_count if author else 1
-        
-        # Calculate score
-        score = score_post(post, followers)
-        
-        # Store with score for sorting
-        scored_posts.append((score, post))
-    
-    # Sort by score descending
-    scored_posts.sort(key=lambda x: x[0], reverse=True)
-    
-    # Return just the posts
-    return [post for score, post in scored_posts]
+def normalize_engagement_scores(posts: list[Post]) -> dict[str, float]:
+    """Normalize raw engagement scores to 0-100 within the current batch."""
+    if not posts:
+        return {}
+
+    raw_scores = {post.id: raw_engagement_score(post) for post in posts}
+    max_raw = max(raw_scores.values(), default=0.0)
+    if max_raw <= 0:
+        return {post.id: 0.0 for post in posts}
+
+    return {post_id: min(100.0, (score / max_raw) * 100.0) for post_id, score in raw_scores.items()}
+
+
+def information_density_score(post: Post) -> float:
+    """Compute information density score on a 0-20 scale."""
+    density = 0.0
+    text = post.text or ""
+    text_len = len(text.strip())
+    has_link = bool(post.urls)
+    has_media = bool(post.media)
+    is_thread = len(post.thread_posts) >= 2
+
+    if has_link:
+        density += 3
+    if post.is_article or (post.article_url and "/article/" in post.article_url):
+        density += 5
+    if is_thread:
+        density += 4
+    if text_len > 200:
+        density += 2
+    if text_len > 500:
+        density += 2
+    if has_media:
+        density += 1
+    if text_len < 100 and not has_link and not has_media:
+        density -= 2
+
+    return max(0.0, min(20.0, density))
+
+
+def score_post(
+    post: Post,
+    normalized_engagement: float,
+    tab: Literal["cant_miss", "for_you", "following"],
+) -> float:
+    """Final per-tab score from normalized engagement + density."""
+    if tab == "cant_miss":
+        return normalized_engagement
+
+    density = information_density_score(post)
+    if tab == "for_you":
+        return (normalized_engagement * 0.4) + (density * 0.6)
+
+    # following
+    return (normalized_engagement * 0.5) + (density * 0.5)
+
+
+def rank_posts(posts: list[Post]) -> list[Post]:
+    """Rank posts by normalized engagement score (descending)."""
+    normalized = normalize_engagement_scores(posts)
+    return sorted(posts, key=lambda p: normalized.get(p.id, 0.0), reverse=True)

@@ -1,11 +1,11 @@
-"""
-Brief history tracking and deduplication.
-"""
+"""Brief history tracking and deduplication."""
+
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from x_brief.models import Post
+from x_brief.scorer import raw_engagement_score
 
 
 def _parse_iso_datetime(value: object) -> datetime | None:
@@ -37,7 +37,7 @@ def load_brief_history(history_path: str) -> dict:
         }
 
     try:
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             return json.load(f)
     except Exception as e:
         print(f"⚠️ Error loading brief history: {e}")
@@ -47,35 +47,62 @@ def load_brief_history(history_path: str) -> dict:
         }
 
 
-def filter_already_briefed(posts: list[Post], history: dict, max_age_hours: int = 48) -> list[Post]:
+def _is_cant_miss_threshold(post: Post) -> bool:
+    return post.metrics.views > 500_000 and post.metrics.likes > 10_000
+
+
+def filter_already_briefed(
+    posts: list[Post],
+    history: dict,
+    max_age_hours: int = 48,
+    reemergence_multiplier: float = 10.0,
+) -> tuple[list[Post], set[str]]:
     """
     Remove posts that have already been included in a recent brief.
 
-    Only posts briefed within max_age_hours are excluded.
-
-    Args:
-        posts: List of Post objects to filter
-        history: Brief history dict from load_brief_history()
-        max_age_hours: Recent dedup window in hours (default: 48)
+    Dedup window is max_age_hours, except re-emergence: if a previously briefed post now has
+    >=10x engagement relative to last recorded engagement, it can reappear (Can't Miss only).
 
     Returns:
-        List of posts not yet briefed in the recent window
+        (filtered_posts, reemergent_post_ids)
     """
     cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
 
-    recent_briefed_ids: set[str] = set()
-    for post_id, metadata in history.get('posts', {}).items():
-        briefed_at = _parse_iso_datetime(metadata.get('briefed_at') if isinstance(metadata, dict) else None)
+    recent_history: dict[str, dict] = {}
+    for post_id, metadata in history.get("posts", {}).items():
+        if not isinstance(metadata, dict):
+            continue
+        briefed_at = _parse_iso_datetime(metadata.get("briefed_at"))
         if briefed_at and briefed_at >= cutoff:
-            recent_briefed_ids.add(post_id)
+            recent_history[post_id] = metadata
 
-    new_posts = [p for p in posts if p.id not in recent_briefed_ids]
+    reemergent_post_ids: set[str] = set()
+    new_posts: list[Post] = []
+
+    for post in posts:
+        metadata = recent_history.get(post.id)
+        if metadata is None:
+            new_posts.append(post)
+            continue
+
+        prior_engagement = float(metadata.get("engagement_raw", 0) or 0)
+        current_engagement = raw_engagement_score(post)
+
+        if (
+            prior_engagement > 0
+            and current_engagement >= prior_engagement * reemergence_multiplier
+            and _is_cant_miss_threshold(post)
+        ):
+            new_posts.append(post)
+            reemergent_post_ids.add(post.id)
 
     filtered_count = len(posts) - len(new_posts)
     if filtered_count > 0:
         print(f"🔍 Filtered out {filtered_count} already-briefed posts from the last {max_age_hours}h")
+    if reemergent_post_ids:
+        print(f"♻️ Re-emerged {len(reemergent_post_ids)} post(s) with 10x engagement jump")
 
-    return new_posts
+    return new_posts, reemergent_post_ids
 
 
 def _should_cleanup(history: dict, min_interval_hours: int = 24) -> bool:
@@ -100,23 +127,21 @@ def save_brief_history(history_path: str, history: dict, new_posts: list[Post], 
     path = Path(history_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Cleanup history at most once every 24h
     if _should_cleanup(history, min_interval_hours=24):
         history = cleanup_history(history, max_age_hours=max_age_hours)
 
-    # Add new posts to history
     now = datetime.now(timezone.utc).isoformat()
-    history.setdefault('posts', {})
+    history.setdefault("posts", {})
     for post in new_posts:
-        history['posts'][post.id] = {
-            'url': f"https://x.com/{post.author_username}/status/{post.id}",
-            'briefed_at': now,
-            'title': post.text[:100],  # Short summary
+        history["posts"][post.id] = {
+            "url": f"https://x.com/{post.author_username}/status/{post.id}",
+            "briefed_at": now,
+            "title": post.text[:100],
+            "engagement_raw": raw_engagement_score(post),
         }
 
-    # Write back to file
     try:
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             json.dump(history, f, indent=2)
         print(f"💾 Saved {len(new_posts)} posts to brief history")
     except Exception as e:
@@ -136,14 +161,14 @@ def cleanup_history(history: dict, max_age_hours: int = 48) -> dict:
     """
     cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
 
-    posts = history.get('posts', {})
+    posts = history.get("posts", {})
     original_count = len(posts)
 
     cleaned_posts = {}
     for post_id, data in posts.items():
         if not isinstance(data, dict):
             continue
-        briefed_at = _parse_iso_datetime(data.get('briefed_at'))
+        briefed_at = _parse_iso_datetime(data.get("briefed_at"))
         if briefed_at and briefed_at >= cutoff:
             cleaned_posts[post_id] = data
 
@@ -152,6 +177,6 @@ def cleanup_history(history: dict, max_age_hours: int = 48) -> dict:
         print(f"🗑️  Cleaned up {removed_count} old entries from brief history")
 
     return {
-        'posts': cleaned_posts,
-        'last_cleanup': datetime.now(timezone.utc).isoformat(),
+        "posts": cleaned_posts,
+        "last_cleanup": datetime.now(timezone.utc).isoformat(),
     }

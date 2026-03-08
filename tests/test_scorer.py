@@ -1,7 +1,13 @@
 from datetime import datetime, timedelta, timezone
 
-from x_brief.models import Post, PostMetrics, User
-from x_brief.scorer import deduplicate, get_viral_multiplier, is_mega_viral, rank_posts, score_post
+from x_brief.models import Post, PostMetrics
+from x_brief.scorer import (
+    deduplicate,
+    information_density_score,
+    normalize_engagement_scores,
+    raw_engagement_score,
+    score_post,
+)
 
 
 def make_post(
@@ -14,8 +20,13 @@ def make_post(
     replies: int = 1,
     views: int = 500,
     quotes: int = 0,
+    bookmarks: int = 0,
     created_at: datetime | None = None,
     is_repost: bool = False,
+    urls: list[str] | None = None,
+    media: list[dict] | None = None,
+    is_article: bool = False,
+    thread_posts: list[dict] | None = None,
 ) -> Post:
     return Post(
         id=post_id,
@@ -30,17 +41,13 @@ def make_post(
             replies=replies,
             views=views,
             quotes=quotes,
+            bookmarks=bookmarks,
         ),
         is_repost=is_repost,
-    )
-
-
-def make_user(user_id: str, followers_count: int) -> User:
-    return User(
-        id=user_id,
-        username=user_id,
-        name=user_id,
-        followers_count=followers_count,
+        urls=urls or [],
+        media=media or [],
+        is_article=is_article,
+        thread_posts=thread_posts or [],
     )
 
 
@@ -64,48 +71,40 @@ def test_deduplicate_skips_reposts_and_keeps_highest_scored_quote() -> None:
     assert unique_ids == [higher_quote.id]
 
 
-def test_deduplicate_top_picks_filters_too_short_posts() -> None:
-    short_post = make_post("1", text="👀 https://example.com")
-    meaningful_post = make_post("2", text="This post has enough real text to survive top picks filtering.")
+def test_raw_engagement_and_normalization() -> None:
+    low = make_post("low", likes=100, reposts=10, replies=5, bookmarks=2, views=10000)
+    high = make_post("high", likes=1000, reposts=100, replies=40, bookmarks=20, views=100000)
 
-    unique_posts = deduplicate([short_post, meaningful_post], section="top_picks")
+    assert raw_engagement_score(high) > raw_engagement_score(low)
 
-    assert [post.id for post in unique_posts] == ["2"]
+    normalized = normalize_engagement_scores([low, high])
+    assert normalized["high"] == 100.0
+    assert 0.0 <= normalized["low"] < 100.0
 
 
-def test_score_post_applies_mega_viral_boost_for_older_posts() -> None:
-    older_viral_post = make_post(
-        "1",
-        likes=20_000,
-        reposts=6_000,
-        views=2_500_000,
-        created_at=datetime.now(timezone.utc) - timedelta(hours=40),
+def test_density_scoring_caps_at_20_and_applies_hot_take_penalty() -> None:
+    dense = make_post(
+        "dense",
+        text="A" * 600,
+        urls=["https://example.com/article/123"],
+        is_article=True,
+        media=[{"type": "photo"}],
+        thread_posts=[{"text": "1"}, {"text": "2"}],
     )
-    older_normal_post = make_post(
-        "2",
-        likes=800,
-        reposts=60,
-        views=250_000,
-        created_at=datetime.now(timezone.utc) - timedelta(hours=40),
-    )
+    hot_take = make_post("hot", text="this sucks", urls=[], media=[])
 
-    assert is_mega_viral(older_viral_post) is True
-    assert get_viral_multiplier(older_viral_post) == 5.0
-    assert score_post(older_viral_post, followers_count=1_000_000) > score_post(
-        older_normal_post, followers_count=1_000_000
-    )
+    assert information_density_score(dense) == 17.0
+    assert information_density_score(hot_take) == 0.0
 
 
-def test_rank_posts_prefers_breakout_from_smaller_account() -> None:
-    small_account_post = make_post("1", author_id="small", likes=900, reposts=140, views=120_000)
-    large_account_post = make_post("2", author_id="large", likes=900, reposts=140, views=120_000)
+def test_final_tab_scores_weight_density_for_for_you() -> None:
+    post = make_post("p1", text="A" * 300, urls=["https://example.com"], bookmarks=10)
+    engagement = 80.0
 
-    ranked = rank_posts(
-        [large_account_post, small_account_post],
-        users_map={
-            "small": make_user("small", followers_count=800),
-            "large": make_user("large", followers_count=2_000_000),
-        },
-    )
+    cant_miss_score = score_post(post, engagement, tab="cant_miss")
+    for_you_score = score_post(post, engagement, tab="for_you")
+    following_score = score_post(post, engagement, tab="following")
 
-    assert [post.id for post in ranked] == ["1", "2"]
+    assert cant_miss_score == 80.0
+    assert for_you_score < cant_miss_score
+    assert following_score < cant_miss_score
