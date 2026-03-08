@@ -222,7 +222,8 @@ export function PostCard({
           {postUrl && onToggleSaved && (
             <button
               type="button"
-              aria-label={isSaved ? "Unsave post" : "Save post"}
+              aria-label={isSaved ? "Saved for later" : "Save for later"}
+              title={isSaved ? "Saved for later" : "Save for later"}
               className={`ml-auto rounded-full p-1 transition-colors ${
                 isSaved
                   ? "text-[#1d9bf0] bg-[#1d9bf0]/10"
