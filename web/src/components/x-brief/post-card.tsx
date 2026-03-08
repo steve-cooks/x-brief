@@ -39,8 +39,8 @@ interface QuotedPostData {
 
 function QuotedPost({ post }: { post: QuotedPostData }) {
   const [expanded, setExpanded] = useState(false)
-  const isLong = false
-  const displayText = post.text
+  const isLong = post.text.length > 180
+  const displayText = !expanded && isLong ? post.text.slice(0, 180) + "…" : post.text
 
   return (
     <div
@@ -170,8 +170,10 @@ export function PostCard({
   const [textExpanded, setTextExpanded] = useState(false)
   const [threadExpanded, setThreadExpanded] = useState(false)
 
-  const isLongText = false
-  const displayText = text
+  // Detect truncation: either text exceeds our limit, or the scan data was already truncated
+  const scanTruncated = text.endsWith("…") || text.endsWith("...")
+  const isLongText = text.length > TRUNCATE_LENGTH || scanTruncated
+  const displayText = !textExpanded && text.length > TRUNCATE_LENGTH ? text.slice(0, TRUNCATE_LENGTH) + "…" : text
 
   const initials = authorName
     .split(" ")
@@ -256,7 +258,12 @@ export function PostCard({
                 className="text-[#1d9bf0] hover:underline ml-1 text-[15px]"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setTextExpanded(true)
+                  if (scanTruncated && postUrl) {
+                    // Text was truncated at scan time — open the full post on X
+                    window.open(postUrl, "_blank", "noopener,noreferrer")
+                  } else {
+                    setTextExpanded(true)
+                  }
                 }}
               >
                 Show more
