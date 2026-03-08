@@ -12,10 +12,7 @@ If you are new to this repository, start there before using the shorter README q
 
 ## Screenshots / Demo
 
-After generating a briefing, `http://localhost:3000` opens a clean, local web interface that presents the curated feed in three tabs:
-- `Top Stories`
-- `Articles`
-- `Worth a Look`
+After generating a briefing, `http://localhost:3000` opens a clean, local web interface with X-style tabs (for example: Top Stories, Viral, Your Circle, Articles, Trending, Worth a Look depending on available data).
 
 Each section highlights ranked posts with summaries, links, and metadata so you can quickly review the most relevant items from your timeline.
 
@@ -61,12 +58,31 @@ git clone https://github.com/steve-cooks/x-brief.git
 cd x-brief
 
 # Python setup
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-# Generate/update briefing data
-x-brief brief --config configs/example.json --hours 24 --format markdown
+# Create one sample scan file (so scan mode works out of the box)
+mkdir -p timeline_scans
+cat > timeline_scans/sample.json <<'JSON'
+{
+  "scan_time": "2026-03-07T08:00:00Z",
+  "posts": [
+    {
+      "url": "https://x.com/openai/status/1891111111111111111",
+      "author": "@openai",
+      "author_name": "OpenAI",
+      "text": "Example scan post for local setup validation.",
+      "posted_at": "57m ago",
+      "verified": true,
+      "metrics": { "likes": "1200", "reposts": "80", "replies": "40", "views": "100K" }
+    }
+  ]
+}
+JSON
+
+# Generate/update briefing data (scan mode, no API key)
+python -m x_brief.pipeline configs/example.json --from-scans --hours 24
 
 # Frontend setup
 cd web
