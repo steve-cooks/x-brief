@@ -35,18 +35,16 @@ def main():
 def init(output: str):
     """Create an example config file"""
     example_config = UserConfig(
-        x_handle="yourusername",
+        x_handle="your_handle",
         tracked_accounts=[
-            "elonmusk",
-            "openai",
-            "AnthropicAI",
-            "steipete",
+            "example_org",
+            "example_project",
+            "community_news",
         ],
-        interests=[
-            "AI",
-            "technology",
-            "startups",
-            "crypto",
+        recent_interests=[
+            "developer tools",
+            "open source",
+            "engineering blogs",
         ],
         delivery={
             "type": "telegram",
@@ -92,8 +90,7 @@ async def _fetch(config_path: str, hours: int):
     system_config = load_system_config()
     
     if not system_config.x_api_bearer_token:
-        click.echo("❌ Error: X_BRIEF_BEARER_TOKEN environment variable not set", err=True)
-        return
+        raise click.ClickException("X_BRIEF_BEARER_TOKEN environment variable not set")
     
     # Initialize cache and client
     cache = Cache(system_config.db_path)
@@ -192,8 +189,7 @@ async def _brief(config_path: str, hours: int, output_format: str, output_file: 
     system_config = load_system_config()
     
     if not system_config.x_api_bearer_token:
-        click.echo("❌ Error: X_BRIEF_BEARER_TOKEN environment variable not set", err=True)
-        return
+        raise click.ClickException("X_BRIEF_BEARER_TOKEN environment variable not set")
     
     # Initialize cache
     cache = Cache(system_config.db_path)
