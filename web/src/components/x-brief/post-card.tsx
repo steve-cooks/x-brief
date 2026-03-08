@@ -135,6 +135,10 @@ interface PostCardProps {
   media?: MediaItem[]
   metrics?: PostMetrics
   postUrl?: string
+  source?: "for_you" | "following" | null
+  is_article?: boolean
+  article_url?: string | null
+  thread_posts?: Array<{ id?: string | null; text: string; url?: string | null }>
   timestamp?: string
   createdAt?: string
   category?: string
@@ -156,6 +160,9 @@ export function PostCard({
   media,
   metrics,
   postUrl,
+  is_article,
+  article_url,
+  thread_posts,
   timestamp,
   createdAt,
   quotedPost,
@@ -239,6 +246,21 @@ export function PostCard({
           )}
         </div>
 
+        {(is_article || (thread_posts && thread_posts.length > 0)) && (
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {is_article && (
+              <span className="inline-flex items-center rounded-full border border-[#1d9bf0]/40 bg-[#1d9bf0]/10 px-2 py-0.5 text-[11px] font-medium text-[#1d9bf0]">
+                Article
+              </span>
+            )}
+            {thread_posts && thread_posts.length > 0 && (
+              <span className="inline-flex items-center rounded-full border border-border bg-accent px-2 py-0.5 text-[11px] font-medium text-foreground">
+                Thread ({thread_posts.length + 1} posts)
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="mt-0.5 max-w-full">
           <p className="text-[15px] leading-[20px] text-foreground whitespace-pre-wrap break-words">
             <RichText text={displayText} hideUrls={hasLinkCard} />
@@ -259,7 +281,29 @@ export function PostCard({
         {hasMedia && <MediaGrid media={media!} onImageClick={handleImageClick} onMediaOpen={onMediaOpen} />}
         {hasLinkCard && <EnrichedLinkCard card={linkCard!} />}
         {firstUrl && !hasLinkCard && <SimpleLinkCard url={firstUrl} />}
+        {is_article && article_url && !hasLinkCard && <SimpleLinkCard url={article_url} />}
         {quotedPost && <QuotedPost post={quotedPost} />}
+        {thread_posts && thread_posts.length > 0 && (
+          <div className="mt-3 space-y-2 border-l-2 border-border pl-3">
+            {thread_posts.map((threadPost, index) => (
+              <div key={threadPost.id || `${threadPost.url || "thread"}-${index}`} className="text-[14px] leading-5 text-muted-foreground">
+                <RichText text={threadPost.text} />
+                {threadPost.url && (
+                  <button
+                    type="button"
+                    className="ml-1 text-[#1d9bf0] hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      window.open(threadPost.url || undefined, "_blank", "noopener,noreferrer")
+                    }}
+                  >
+                    ↗
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {metrics && <MetricsBar metrics={metrics} />}
       </div>
     </article>

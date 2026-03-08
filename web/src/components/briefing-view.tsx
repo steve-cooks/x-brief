@@ -26,6 +26,10 @@ interface Post {
   }>
   metrics?: { likes?: number; reposts?: number; views?: number; replies?: number; bookmarks?: number }
   postUrl?: string
+  source?: "for_you" | "following" | null
+  is_article?: boolean
+  article_url?: string | null
+  thread_posts?: Array<{ id?: string | null; text: string; url?: string | null }>
   timestamp?: string
   createdAt?: string
   category?: string
@@ -73,15 +77,12 @@ interface BriefingData {
 }
 
 const SECTION_DISPLAY: Record<string, { label: string; id: string }> = {
-  "TOP STORIES": { label: "Top Stories", id: "top_stories" },
-  "TRENDING IN YOUR NICHES": { label: "Trending", id: "trending" },
-  "WORTH A LOOK": { label: "Picks", id: "worth_a_look" },
   "VIRAL 🔥": { label: "Viral 🔥", id: "viral" },
-  "YOUR CIRCLE": { label: "Your Circle", id: "your_circle" },
-  "ARTICLES & THREADS": { label: "Articles", id: "articles" },
+  "TOP PICKS 📌": { label: "Top Picks", id: "top_picks" },
+  "FOLLOWING 👥": { label: "Following", id: "following" },
 }
 
-const TAB_ORDER = ["top_stories", "saved", "viral", "your_circle", "articles", "trending", "worth_a_look"]
+const TAB_ORDER = ["viral", "top_picks", "following", "saved"]
 const SAVED_FALLBACK_KEY = "x-brief-saved-post-urls"
 
 function formatStat(num: number): string {
