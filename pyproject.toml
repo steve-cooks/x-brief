@@ -9,7 +9,7 @@ description = "AI-powered X/Twitter timeline curator and briefing generator"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    { name = "OpenClaw", email = "hello@openclaw.com" }
+    { name = "Steve Cook" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
