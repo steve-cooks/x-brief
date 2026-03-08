@@ -85,6 +85,7 @@ Minimum supported shape:
       "url": "https://x.com/openai/status/1891111111111111111",
       "author": "@openai",
       "author_name": "OpenAI",
+      "avatar_url": "https://pbs.twimg.com/profile_images/.../openai_normal.jpg",
       "text": "Example scan post for local setup validation.",
       "posted_at": "57m ago",
       "verified": true,
@@ -105,6 +106,7 @@ Notes:
 - Each post must include a valid X status URL with `/status/<numeric_id>`.
 - `posted_at` can be relative text like `57m ago`, `3h ago`, or `Mar 7`.
 - Metric values can be raw numbers or abbreviated strings like `12K`.
+- `avatar_url` is optional but recommended; when present it is exported as `authorAvatarUrl` without waiting for syndication enrichment.
 - Optional arrays `viral_alerts` and `notable_posts` are also read when present.
 
 ## 5. Run The Pipeline

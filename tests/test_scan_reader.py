@@ -2,7 +2,9 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from x_brief.scan_reader import load_scan_posts
+import pytest
+
+from x_brief.scan_reader import build_users_from_posts, load_scan_posts
 
 
 def make_scan_post(
@@ -12,6 +14,7 @@ def make_scan_post(
     text: str = "Useful scan post text",
     posted_at: str = "2h ago",
     verified: bool | None = None,
+    avatar_url: str | None = None,
     url: str | None = None,
     metrics: dict | None = None,
 ) -> dict:
@@ -31,6 +34,8 @@ def make_scan_post(
     }
     if verified is not None:
         data["verified"] = verified
+    if avatar_url is not None:
+        data["avatar_url"] = avatar_url
     return data
 
 
@@ -118,6 +123,27 @@ def test_load_scan_posts_reads_recent_scans_deduplicates_and_filters_invalid_url
     assert scan_verified == {"alice": True, "bob": False}
 
 
+def test_load_scan_posts_keeps_avatar_from_scan_data(tmp_path: Path) -> None:
+    scan_dir = tmp_path / "timeline_scans"
+    scan_time = datetime.now(timezone.utc).replace(microsecond=0)
+    avatar = "https://pbs.twimg.com/profile_images/example/alice_normal.jpg"
+
+    write_scan_file(
+        scan_dir,
+        "2026-03-08-11.json",
+        scan_time=scan_time,
+        posts=[
+            make_scan_post("101", "@alice", posted_at="30m ago", avatar_url=avatar, verified=True),
+        ],
+    )
+
+    posts, scan_verified = load_scan_posts(str(scan_dir), hours=24)
+    users = build_users_from_posts(posts, scan_verified=scan_verified)
+
+    assert posts[0].author_avatar_url == avatar
+    assert users["alice"].profile_image_url == avatar
+
+
 def test_load_scan_posts_parses_relative_and_absolute_posted_at_values(tmp_path: Path) -> None:
     scan_dir = tmp_path / "timeline_scans"
     scan_time = datetime.now(timezone.utc).replace(microsecond=0)
@@ -140,3 +166,12 @@ def test_load_scan_posts_parses_relative_and_absolute_posted_at_values(tmp_path:
     assert posts_by_id["101"].created_at == scan_time - timedelta(hours=2)
     assert posts_by_id["102"].created_at == datetime(2026, 3, 7, 0, 0, tzinfo=timezone.utc)
     assert posts_by_id["103"].created_at == datetime(2026, 3, 7, 8, 30, tzinfo=timezone.utc)
+
+
+def test_load_scan_posts_raises_on_invalid_json(tmp_path: Path) -> None:
+    scan_dir = tmp_path / "timeline_scans"
+    scan_dir.mkdir(parents=True)
+    (scan_dir / "2026-03-08-11.json").write_text("{not valid json", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid JSON in scan file"):
+        load_scan_posts(str(scan_dir), hours=24)

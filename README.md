@@ -41,6 +41,7 @@ cat > timeline_scans/sample.json <<'JSON'
       "url": "https://x.com/openai/status/1891111111111111111",
       "author": "@openai",
       "author_name": "OpenAI",
+      "avatar_url": "https://pbs.twimg.com/profile_images/.../openai_normal.jpg",
       "text": "Example scan post for local setup validation.",
       "posted_at": "57m ago",
       "verified": true,

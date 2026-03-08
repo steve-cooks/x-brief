@@ -8,11 +8,11 @@ Usage:
     python3 -m x_brief.enrichment [path_to_briefing.json]
 """
 
+import asyncio
 import json
 import os
 import re
 import sys
-import time
 import urllib.request
 import urllib.error
 from typing import Optional
@@ -20,7 +20,8 @@ from typing import Optional
 
 SYNDICATION_URL = "https://cdn.syndication.twimg.com/tweet-result?id={tweet_id}&token=x"
 MAX_POSTS_PER_RUN = 30
-REQUEST_DELAY_SEC = 1.0
+REQUEST_DELAY_SEC = 0.5
+MAX_CONCURRENT_REQUESTS = 5
 
 
 def _extract_tweet_id(post_url: str) -> Optional[str]:
@@ -198,17 +199,8 @@ def _upgrade_avatar(data: dict) -> Optional[str]:
     return None
 
 
-def enrich_with_syndication(json_path: str) -> None:
-    """
-    Enrich a briefing JSON file with rich media data from X's syndication API.
-
-    For each post, fetches photos, videos, GIFs, quoted tweets, and link cards.
-    Additive only — never removes existing data.
-
-    Args:
-        json_path: Path to the briefing JSON file (e.g., data/latest-briefing.json)
-    """
-    # Read existing JSON
+async def enrich_with_syndication_async(json_path: str) -> None:
+    """Async enrichment with bounded concurrency and request pacing."""
     try:
         with open(json_path, "r") as f:
             data = json.load(f)
@@ -219,88 +211,100 @@ def enrich_with_syndication(json_path: str) -> None:
         print(f"⚠️ Invalid JSON in: {json_path}")
         return
 
-    # Collect all posts across sections
-    all_posts: list[tuple[dict, str]] = []  # (post_dict, section_title)
+    all_posts: list[dict] = []
     for section in data.get("sections", []):
         for post in section.get("posts", []):
-            all_posts.append((post, section.get("title", "")))
+            all_posts.append(post)
 
     if not all_posts:
         print("⚠️ No posts found in briefing JSON.")
         return
 
-    print(f"🔍 Enriching {len(all_posts)} posts via syndication API...")
+    selected_posts = all_posts[:MAX_POSTS_PER_RUN]
+    if len(all_posts) > MAX_POSTS_PER_RUN:
+        print(f"  ⏸️  Hit max posts limit ({MAX_POSTS_PER_RUN}), stopping.")
 
-    enriched = 0
-    skipped = 0
-    errors = 0
+    print(f"🔍 Enriching {len(selected_posts)} posts via syndication API...")
 
-    for i, (post, section_title) in enumerate(all_posts):
-        if i >= MAX_POSTS_PER_RUN:
-            print(f"  ⏸️  Hit max posts limit ({MAX_POSTS_PER_RUN}), stopping.")
-            break
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+    pace_lock = asyncio.Lock()
+    pace_state = {"last_call": 0.0}
 
+    async def _process(post: dict) -> tuple[str, str, int]:
         post_url = post.get("postUrl", "")
         tweet_id = _extract_tweet_id(post_url)
         username = post.get("authorUsername", "unknown")
 
         if not tweet_id:
-            skipped += 1
-            continue
+            return ("skipped", username, 0)
 
-        # Rate limiting
-        if i > 0:
-            time.sleep(REQUEST_DELAY_SEC)
+        async with semaphore:
+            async with pace_lock:
+                now = asyncio.get_running_loop().time()
+                wait_for = REQUEST_DELAY_SEC - (now - pace_state["last_call"])
+                if wait_for > 0:
+                    await asyncio.sleep(wait_for)
+                pace_state["last_call"] = asyncio.get_running_loop().time()
 
-        # Fetch syndication data
-        tweet_data = _fetch_syndication(tweet_id)
+            tweet_data = await asyncio.to_thread(_fetch_syndication, tweet_id)
+
         if not tweet_data:
-            errors += 1
-            print(f"  ⚠️ Failed to fetch @{username} ({tweet_id})")
-            continue
+            return ("error", username, 0)
 
-        changes = []
-
-        # Enrich media (only if currently empty)
+        changes = 0
         if not post.get("media"):
             media = _extract_media(tweet_data)
             if media:
                 post["media"] = media
-                changes.append(f"{len(media)} media")
+                changes += 1
 
-        # Enrich quoted post (only if currently null/missing)
         if not post.get("quotedPost"):
             quoted = _extract_quoted_post(tweet_data)
             if quoted:
                 post["quotedPost"] = quoted
-                changes.append("quote")
+                changes += 1
 
-        # Enrich link card (new field, only if not already present)
         if not post.get("linkCard"):
             link_card = _extract_link_card(tweet_data)
             if link_card:
                 post["linkCard"] = link_card
-                changes.append("linkCard")
+                changes += 1
 
-        # Upgrade avatar URL to real CDN image
         new_avatar = _upgrade_avatar(tweet_data)
         if new_avatar:
             old_avatar = post.get("authorAvatarUrl", "")
             if not old_avatar or "unavatar.io" in old_avatar or "pbs.twimg.com" not in old_avatar:
                 post["authorAvatarUrl"] = new_avatar
-                changes.append("avatar")
+                changes += 1
 
-        if changes:
+        if changes > 0:
+            return ("enriched", username, changes)
+        return ("skipped", username, 0)
+
+    results = await asyncio.gather(*[_process(post) for post in selected_posts])
+
+    enriched = 0
+    skipped = 0
+    errors = 0
+    for status, username, change_count in results:
+        if status == "enriched":
             enriched += 1
-            print(f"  ✅ @{username}: {', '.join(changes)}")
+            print(f"  ✅ @{username}: {change_count} updates")
+        elif status == "error":
+            errors += 1
+            print(f"  ⚠️ Failed to fetch @{username}")
         else:
             skipped += 1
 
-    # Write enriched data back
     with open(json_path, "w") as f:
         json.dump(data, f, indent=2, default=str)
 
     print(f"\n📊 Enrichment complete: {enriched} enriched, {skipped} unchanged, {errors} errors")
+
+
+def enrich_with_syndication(json_path: str) -> None:
+    """Sync wrapper for CLI compatibility."""
+    asyncio.run(enrich_with_syndication_async(json_path))
 
 
 def main():

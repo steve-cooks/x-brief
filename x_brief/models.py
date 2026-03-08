@@ -44,6 +44,7 @@ class Post(BaseModel):
     author_id: str
     author_username: str
     author_name: str
+    author_avatar_url: Optional[str] = None
     created_at: datetime
     metrics: PostMetrics
     media: list[PostMedia] = Field(default_factory=list)

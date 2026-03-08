@@ -311,6 +311,7 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         # Also strip (pinned) from username in case it leaked there
         author_username = sanitize_pinned(author_username)
         author_name = sanitize_pinned(post_data.get('author_name', '') or author_username)
+        author_avatar_url = sanitize_pinned(post_data.get('avatar_url', '') or post_data.get('author_avatar_url', '') or '') or None
         
         # Parse metrics — handle both 'metrics' and 'engagement' keys
         # Also handle top-level metric fields
@@ -372,6 +373,7 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
             author_id=author_username,  # Use username as ID since we don't have real IDs
             author_username=author_username,
             author_name=author_name,
+            author_avatar_url=author_avatar_url,
             created_at=parsed_time,  # Use parsed posted_at, fall back to scan_time
             metrics=metrics,
             media=media_items,
@@ -417,40 +419,40 @@ def load_scan_posts(scan_dir: str, hours: int = 48) -> tuple[list[Post], dict[st
     
     for json_file in json_files:
         try:
-            with open(json_file, 'r') as f:
+            with open(json_file, 'r', encoding='utf-8') as f:
                 scan_data = json.load(f)
-            
-            # Parse scan time — accept both 'scan_time' and 'timestamp' keys
-            scan_time_str = scan_data.get('scan_time') or scan_data.get('timestamp')
-            if not scan_time_str:
-                continue
-            
-            scan_time = datetime.fromisoformat(scan_time_str.replace('Z', '+00:00'))
-            
-            # Skip if too old
-            if scan_time < cutoff_time:
-                continue
-            
-            scans_loaded += 1
-            
-            # Process viral_alerts, notable_posts, and top-level posts list (newer format)
-            for section in ('viral_alerts', 'notable_posts', 'posts'):
-                for post_data in scan_data.get(section, []):
-                    # Collect verification data from scan
-                    verified_val = post_data.get('verified')
-                    if verified_val is not None:
-                        author = sanitize_pinned(post_data.get('author', ''))
-                        username = extract_username(author).lower()
-                        if username:
-                            scan_verified[username] = bool(verified_val)
-                    
-                    post = parse_scan_post(post_data, scan_time)
-                    if post and post.id not in posts_by_id:
-                        posts_by_id[post.id] = post
-        
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in scan file {json_file.name}: {e}") from e
         except Exception as e:
-            print(f"  ⚠️ Error loading {json_file.name}: {e}")
+            raise RuntimeError(f"Failed reading scan file {json_file.name}: {e}") from e
+
+        # Parse scan time — accept both 'scan_time' and 'timestamp' keys
+        scan_time_str = scan_data.get('scan_time') or scan_data.get('timestamp')
+        if not scan_time_str:
             continue
+
+        scan_time = datetime.fromisoformat(scan_time_str.replace('Z', '+00:00'))
+
+        # Skip if too old
+        if scan_time < cutoff_time:
+            continue
+
+        scans_loaded += 1
+
+        # Process viral_alerts, notable_posts, and top-level posts list (newer format)
+        for section in ('viral_alerts', 'notable_posts', 'posts'):
+            for post_data in scan_data.get(section, []):
+                # Collect verification data from scan
+                verified_val = post_data.get('verified')
+                if verified_val is not None:
+                    author = sanitize_pinned(post_data.get('author', '') or post_data.get('author_handle', ''))
+                    username = extract_username(author).lower()
+                    if username:
+                        scan_verified[username] = bool(verified_val)
+
+                post = parse_scan_post(post_data, scan_time)
+                if post and post.id not in posts_by_id:
+                    posts_by_id[post.id] = post
     
     posts = list(posts_by_id.values())
     print(f"✅ Loaded {len(posts)} unique posts from {scans_loaded} scan files")
@@ -504,7 +506,7 @@ def build_users_from_posts(
                 followers_count=1000,  # Default moderate count for scoring
                 verified=is_verified,
                 verified_type=verified_type,
-                profile_image_url=None,
+                profile_image_url=post.author_avatar_url,
             )
     
     return users_map

@@ -215,7 +215,7 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
         for item in section.items:
             post = item.post
             user = users_map.get(post.author_id)
-            avatar_url = user.profile_image_url if user else None
+            avatar_url = post.author_avatar_url or (user.profile_image_url if user else None)
             # Get higher res avatar (replace _normal with _bigger or _400x400)
             if avatar_url:
                 avatar_url = avatar_url.replace("_normal", "_400x400")
