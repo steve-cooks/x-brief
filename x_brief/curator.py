@@ -170,6 +170,14 @@ def detect_network_amplification(posts: list[Post], search_posts: list[Post]) ->
     return amplified_boosts
 
 
+def _is_external_url(url: str) -> bool:
+    """True for non-X links (including generic external domains)."""
+    normalized = (url or "").lower()
+    return (
+        normalized.startswith("http://") or normalized.startswith("https://")
+    ) and all(domain not in normalized for domain in ("x.com", "twitter.com", "t.co"))
+
+
 def clean_summary(text: str, max_len: int = 120) -> str:
     """Extract a clean summary from tweet text."""
     # Remove URLs
@@ -214,12 +222,14 @@ def curate_briefing(
     posts: list[Post],
     users: dict[str, User],
     interests: list[str],
+    tracked_accounts: list[str] | None = None,
     hours: int = 24,
     search_posts: list[Post] | None = None,
 ) -> Briefing:
     """Build a structured briefing from fetched posts."""
     now = datetime.now(timezone.utc)
-    
+    tracked_accounts_set = {a.lower().lstrip('@') for a in (tracked_accounts or []) if a}
+
     # Deduplicate
     posts = deduplicate(posts, section="general")
     all_search = deduplicate(search_posts or [], section="general")
@@ -304,9 +314,11 @@ def curate_briefing(
     top_scored = []
     for p in top_candidates:
         if p.id not in used_ids:
-            # TOP STORIES requires meaningful engagement
+            # TOP STORIES requires meaningful engagement and excludes article/thread candidates
             m = p.metrics
-            if m.likes < 50 and m.reposts < 10 and m.views < 5000:
+            if m.likes < 100 and m.reposts < 20 and m.views < 10_000:
+                continue
+            if any(_is_external_url(u) for u in p.urls) or len(p.text) > 280:
                 continue
             user = users.get(p.author_id)
             followers = user.followers_count if user else 100
@@ -327,45 +339,64 @@ def curate_briefing(
     if top_items:
         sections.append(BriefingSection(title="TOP STORIES", emoji="📌", items=top_items))
     
-    # Section 2: YOUR CIRCLE — posts from tracked accounts by category
+    # Section 2: YOUR CIRCLE — tracked accounts from config (works in scan-only mode)
     circle_items = []
-    for interest, cat_posts in categorized.items():
-        if interest == "General":
-            continue
-        for p in cat_posts[:3]:
-            if p.id not in used_ids:
-                user = users.get(p.author_id)
-                s = score_post(p, user.followers_count if user else 100)
-                circle_items.append(BriefingItem(
-                    post=p,
-                    summary=clean_summary(p.text),
-                    category=interest,
-                    score=s,
-                ))
-                used_ids.add(p.id)
-    circle_items.sort(key=lambda x: x.score, reverse=True)
+    circle_candidates = [
+        (p, s)
+        for p, s in scored
+        if p.id not in used_ids
+        and p.author_username.lower().lstrip('@') in tracked_accounts_set
+        and (p.metrics.likes >= 15 or p.metrics.reposts >= 3 or p.metrics.views >= 300)
+        and not any(_is_external_url(u) for u in p.urls)
+        and len(p.text) <= 280
+    ]
+    circle_candidates = cap_posts_per_account(circle_candidates)
+    for p, s in circle_candidates:
+        category = "General"
+        for interest, cat_posts in categorized.items():
+            if interest == "General":
+                continue
+            if any(cp.id == p.id for cp in cat_posts):
+                category = interest
+                break
+        circle_items.append(BriefingItem(
+            post=p,
+            summary=clean_summary(p.text),
+            category=category,
+            score=s,
+        ))
+        used_ids.add(p.id)
+        if len(circle_items) >= 10:
+            break
     if circle_items:
-        sections.append(BriefingSection(title="YOUR CIRCLE", emoji="👥", items=circle_items[:10]))
+        sections.append(BriefingSection(title="YOUR CIRCLE", emoji="👥", items=circle_items))
     
     # Section 3: TRENDING IN YOUR NICHES — from search results (already filtered by engagement & score > 0)
     search_scored = cap_posts_per_account(search_scored)
     trend_items = []
     for p, s in search_scored[:8]:
-        if p.id not in used_ids:
-            trend_items.append(BriefingItem(
-                post=p,
-                summary=clean_summary(p.text),
-                category="Trending",
-                score=s,
-            ))
-            used_ids.add(p.id)
+        if p.id in used_ids:
+            continue
+        if any(_is_external_url(u) for u in p.urls) or len(p.text) > 280:
+            continue
+        trend_items.append(BriefingItem(
+            post=p,
+            summary=clean_summary(p.text),
+            category="Trending",
+            score=s,
+        ))
+        used_ids.add(p.id)
     if trend_items:
         sections.append(BriefingSection(title="TRENDING IN YOUR NICHES", emoji="🔥", items=trend_items))
     
-    # Section 3.5: ARTICLES & THREADS — posts with external URLs or long text
+    # Section 3.5: ARTICLES & THREADS — external URLs or long-form posts (scan + search)
     article_items = []
     article_authors: set[str] = set()
-    for p, s in scored:
+    article_pool = {p.id: (p, s) for p, s in scored}
+    for p, s in search_scored:
+        article_pool.setdefault(p.id, (p, s))
+
+    for p, s in sorted(article_pool.values(), key=lambda x: x[1], reverse=True):
         if p.id in used_ids:
             continue
         if p.author_id in article_authors:
@@ -374,14 +405,9 @@ def curate_briefing(
         # Must meet minimum engagement: 500 likes or 50K views
         if m.likes < 500 and m.views < 50_000:
             continue
-        # Detect articles: external URLs (not x.com/twitter.com)
-        external_urls = [
-            u for u in p.urls
-            if 'x.com' not in u and 'twitter.com' not in u and 't.co' not in u
-        ]
+        external_urls = [u for u in p.urls if _is_external_url(u)]
         is_long_thread = len(p.text) > 280
-        has_article = len(external_urls) > 0
-        if has_article or is_long_thread:
+        if external_urls or is_long_thread:
             article_items.append(BriefingItem(
                 post=p,
                 summary=clean_summary(p.text),

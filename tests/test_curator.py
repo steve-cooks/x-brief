@@ -124,6 +124,7 @@ def test_curate_briefing_builds_expected_sections_from_mixed_posts() -> None:
         posts=posts,
         users=users,
         interests=["AI & Tech"],
+        tracked_accounts=["tracked-circle", "tracked-top", "tracked-article", "tracked-worth"],
         hours=24,
         search_posts=search_posts,
     )
@@ -145,3 +146,71 @@ def test_curate_briefing_builds_expected_sections_from_mixed_posts() -> None:
     assert briefing.sections[4].items[0].post.id == "article-1"
     assert briefing.sections[5].items[0].post.id == "worth-1"
     assert briefing.stats["accounts_tracked"] == len(users)
+
+
+def test_curate_briefing_scan_mode_uses_tracked_accounts_for_your_circle() -> None:
+    posts = [
+        make_post(
+            "circle-scan",
+            "tracked-person",
+            "Non-keyword update that should still land in circle.",
+            likes=55,
+            reposts=5,
+            views=6500,
+        )
+    ]
+    users = {"tracked-person": make_user("tracked-person", followers_count=8_000)}
+
+    briefing = curate_briefing(
+        posts=posts,
+        users=users,
+        interests=["AI & Tech"],
+        tracked_accounts=["tracked-person"],
+        hours=24,
+        search_posts=posts,
+    )
+
+    your_circle = next((s for s in briefing.sections if s.title == "YOUR CIRCLE"), None)
+    assert your_circle is not None
+    assert any(item.post.id == "circle-scan" for item in your_circle.items)
+
+
+def test_curate_briefing_articles_include_external_urls_from_search_posts() -> None:
+    posts = [
+        make_post(
+            "top-regular",
+            "author-a",
+            "Internal post",
+            likes=1000,
+            reposts=120,
+            views=200000,
+        )
+    ]
+    search_posts = [
+        make_post(
+            "search-article",
+            "author-b",
+            "Long read https://example.org/essay",
+            likes=700,
+            reposts=60,
+            views=70000,
+            urls=["https://example.org/essay"],
+        )
+    ]
+    users = {
+        "author-a": make_user("author-a", followers_count=90_000),
+        "author-b": make_user("author-b", followers_count=20_000),
+    }
+
+    briefing = curate_briefing(
+        posts=posts,
+        users=users,
+        interests=["AI & Tech"],
+        tracked_accounts=[],
+        hours=24,
+        search_posts=search_posts,
+    )
+
+    articles = next((s for s in briefing.sections if s.title == "ARTICLES & THREADS"), None)
+    assert articles is not None
+    assert any(item.post.id == "search-article" for item in articles.items)
