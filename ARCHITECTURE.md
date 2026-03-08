@@ -28,7 +28,7 @@ timeline_scans/*.json
 - [`x_brief/scan_reader.py`](./x_brief/scan_reader.py): scan JSON parsing, timestamp handling, metric parsing, and user synthesis.
 - [`x_brief/dedup.py`](./x_brief/dedup.py): cross-run brief history loading, filtering, saving, and cleanup.
 - [`x_brief/scorer.py`](./x_brief/scorer.py): post deduplication, scoring, and viral thresholds.
-- [`x_brief/curator.py`](./x_brief/curator.py): section assembly for VIRAL, TOP STORIES, YOUR CIRCLE, TRENDING, ARTICLES, and WORTH A LOOK.
+- [`x_brief/curator.py`](./x_brief/curator.py): section assembly for VIRAL 🔥, TOP PICKS 📌, and FOLLOWING 👥.
 - [`x_brief/enrichment.py`](./x_brief/enrichment.py): optional syndication enrichment after JSON export.
 - [`x_brief/pipeline.py`](./x_brief/pipeline.py): scan-only orchestration, markdown rendering, and JSON export.
 - [`x_brief/cli.py`](./x_brief/cli.py): scan-only Click entrypoints.

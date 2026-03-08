@@ -49,7 +49,7 @@ def deduplicate(posts: list[Post], section: str = "general") -> list[Post]:
     
     Args:
         posts: List of posts to deduplicate
-        section: Section name for filtering rules ("top_stories" or "general")
+        section: Section name for filtering rules ("top_picks" or "general")
     """
     seen_ids = set()
     seen_text = set()
@@ -68,9 +68,9 @@ def deduplicate(posts: list[Post], section: str = "general") -> list[Post]:
         if post.is_repost or post.text.strip().startswith("RT @"):
             continue
         
-        # For TOP STORIES section: skip very short posts (just emojis/lol)
+        # For Top Picks section: skip very short posts (just emojis/lol)
         # Check the text after removing URLs and mentions to catch posts like "👀 https://..."
-        if section == "top_stories":
+        if section == "top_picks":
             # Remove URLs
             cleaned_text = re.sub(r'https?://\S+', '', post.text)
             # Remove @mentions

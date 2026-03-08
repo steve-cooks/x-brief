@@ -64,11 +64,11 @@ def test_deduplicate_skips_reposts_and_keeps_highest_scored_quote() -> None:
     assert unique_ids == [higher_quote.id]
 
 
-def test_deduplicate_top_stories_filters_too_short_posts() -> None:
+def test_deduplicate_top_picks_filters_too_short_posts() -> None:
     short_post = make_post("1", text="👀 https://example.com")
-    meaningful_post = make_post("2", text="This post has enough real text to survive top stories filtering.")
+    meaningful_post = make_post("2", text="This post has enough real text to survive top picks filtering.")
 
-    unique_posts = deduplicate([short_post, meaningful_post], section="top_stories")
+    unique_posts = deduplicate([short_post, meaningful_post], section="top_picks")
 
     assert [post.id for post in unique_posts] == ["2"]
 

@@ -53,7 +53,7 @@ def test_briefing_section_defaults_to_empty_items() -> None:
         generated_at=datetime.now(timezone.utc),
         period_start=datetime.now(timezone.utc),
         period_end=datetime.now(timezone.utc),
-        sections=[BriefingSection(title="TOP STORIES", emoji="📌")],
+        sections=[BriefingSection(title="TOP PICKS 📌", emoji="📌")],
     )
 
     assert briefing.sections[0].items == []
