@@ -22,6 +22,7 @@ export function MetricsBar({ metrics }: { metrics: PostMetrics }) {
       Icon: MessageCircle,
       className: "hover:text-[#1d9bf0]",
       iconBgClass: "group-hover/metric:bg-[#1d9bf0]/10",
+      show: (metrics.replies ?? 0) > 0,
     },
     {
       key: "reposts",
@@ -29,6 +30,7 @@ export function MetricsBar({ metrics }: { metrics: PostMetrics }) {
       Icon: Repeat2,
       className: "hover:text-[#00ba7c]",
       iconBgClass: "group-hover/metric:bg-[#00ba7c]/10",
+      show: (metrics.reposts ?? 0) > 0,
     },
     {
       key: "likes",
@@ -36,6 +38,7 @@ export function MetricsBar({ metrics }: { metrics: PostMetrics }) {
       Icon: Heart,
       className: "hover:text-[#f91880]",
       iconBgClass: "group-hover/metric:bg-[#f91880]/10",
+      show: true,
     },
     {
       key: "bookmarks",
@@ -43,6 +46,7 @@ export function MetricsBar({ metrics }: { metrics: PostMetrics }) {
       Icon: Bookmark,
       className: "hover:text-[#1d9bf0]",
       iconBgClass: "group-hover/metric:bg-[#1d9bf0]/10",
+      show: (metrics.bookmarks ?? 0) > 0,
     },
     {
       key: "views",
@@ -50,12 +54,13 @@ export function MetricsBar({ metrics }: { metrics: PostMetrics }) {
       Icon: Eye,
       className: "hover:text-[#1d9bf0]",
       iconBgClass: "group-hover/metric:bg-[#1d9bf0]/10",
+      show: true,
     },
   ]
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 max-w-full">
-      {items.map(({ key, value, Icon, className, iconBgClass }) => (
+      {items.filter((item) => item.show).map(({ key, value, Icon, className, iconBgClass }) => (
         <div
           key={key}
           className={`group/metric flex items-center gap-0.5 text-muted-foreground p-1 transition-colors cursor-pointer ${className}`}

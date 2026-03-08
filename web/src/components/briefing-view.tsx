@@ -130,9 +130,9 @@ function ThemeToggle() {
     <button
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="flex items-center justify-center h-8 w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors"
+      className="flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors"
     >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {isDark ? <Sun className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Moon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
     </button>
   )
 }
@@ -361,18 +361,18 @@ export function BriefingView() {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-[598px] mx-auto">
-          <div className="flex items-center justify-between px-4 h-[53px]">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-foreground tracking-tight">𝕏 Brief</h1>
+          <div className="flex items-center justify-between px-3 sm:px-4 h-12 sm:h-[53px]">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight whitespace-nowrap">𝕏 Brief</h1>
               {briefing && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[13px] text-muted-foreground">Updated {relativeTime}</span>
+                <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                  <span className="text-xs sm:text-[13px] text-muted-foreground whitespace-nowrap">Updated {relativeTime}</span>
                   {isStale && (
                     <span
                       title="Data may be stale — last update was over 8 hours ago"
-                      className="flex items-center gap-0.5 text-[12px] text-amber-500 dark:text-amber-400"
+                      className="flex items-center gap-0.5 text-[11px] sm:text-[12px] text-amber-500 dark:text-amber-400 whitespace-nowrap"
                     >
-                      <AlertTriangle className="h-3 w-3" />
+                      <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                       Stale
                     </span>
                   )}
@@ -380,15 +380,15 @@ export function BriefingView() {
               )}
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {briefing && (
                 <button
                   onClick={() => void fetchBriefing(true)}
                   disabled={refreshing}
                   aria-label="Refresh briefing"
-                  className="flex items-center justify-center h-8 w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors disabled:opacity-50"
                 >
-                  <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${refreshing ? "animate-spin" : ""}`} />
                 </button>
               )}
               <ThemeToggle />
@@ -402,16 +402,16 @@ export function BriefingView() {
       {!loading && briefing && availableTabs.length > 0 && (
         <div className="w-full" style={{ overflowX: "clip" }}>
           <Tabs key={briefing.generated_at} value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <div className="sticky top-[54px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
+            <div className="sticky top-12 sm:top-[54px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
               <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
-                <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
+                <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex flex-nowrap">
                   {availableTabs.map((tab) => (
                     <TabsTrigger
                       key={tab.id}
                       value={tab.id}
-                      className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-muted-foreground hover:bg-foreground/[0.03] data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-1 after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
+                      className="relative flex-1 min-w-0 py-3 sm:py-4 px-2 sm:px-3 rounded-none border-0 bg-transparent text-sm sm:text-[15px] font-medium text-muted-foreground hover:bg-foreground/[0.03] data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-12 sm:after:w-14 after:h-1 after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                     >
-                      <span className="text-[15px] whitespace-nowrap">{tab.label}</span>
+                      <span className="text-sm sm:text-[15px] whitespace-nowrap">{tab.label}</span>
                     </TabsTrigger>
                   ))}
                 </TabsList>
