@@ -35,4 +35,6 @@ OPENSOURCE_*.md
 *.jpg
 *.jpeg
 *.png
+!docs/images/*.jpg
+!docs/images/*.png
 !web/public/

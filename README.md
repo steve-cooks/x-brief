@@ -2,6 +2,8 @@
 
 X Brief is a self-hosted, scan-only X/Twitter briefing generator. It reads browser timeline scan JSON, curates and scores posts locally, writes `data/latest-briefing.json`, and serves that result through the included Next.js frontend. No API keys are required.
 
+![X Brief Screenshot](docs/images/screenshot.jpg)
+
 ## How It Works
 
 ```text
