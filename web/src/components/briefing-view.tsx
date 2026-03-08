@@ -5,11 +5,56 @@ import { useTheme } from "next-themes"
 import { PostCard } from "@/components/x-brief/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { RefreshCw, Sun, Moon, AlertTriangle } from "lucide-react"
+import { RefreshCw, Sun, Moon, AlertTriangle, Search, X } from "lucide-react"
 import { useSwipeTabs } from "@/hooks/use-swipe-tabs"
 import { MediaViewer } from "@/components/media-viewer"
 import { markPostsAsRead, getReadPostIds, clearOldReadState } from "@/lib/read-state"
 import { trackEvent } from "@/lib/analytics"
+
+interface Post {
+  authorName: string
+  authorUsername: string
+  authorAvatarUrl?: string
+  verified?: string | null
+  text: string
+  media?: Array<{
+    type: string
+    url?: string
+    preview_image_url?: string
+    video_url?: string
+    alt_text?: string
+  }>
+  metrics?: { likes?: number; reposts?: number; views?: number; replies?: number; bookmarks?: number }
+  postUrl?: string
+  timestamp?: string
+  createdAt?: string
+  category?: string
+  quotedPost?: {
+    authorName: string
+    authorUsername: string
+    authorAvatarUrl?: string
+    verified?: string | null
+    text: string
+    media?: Array<{
+      type: string
+      url?: string
+      preview_image_url?: string
+      video_url?: string
+      alt_text?: string
+    }>
+    metrics?: { likes?: number; reposts?: number; views?: number; replies?: number; bookmarks?: number }
+    postUrl?: string
+    timestamp?: string
+    createdAt?: string
+  }
+  linkCard?: {
+    title: string
+    description?: string
+    thumbnail?: string | null
+    domain?: string
+    url?: string
+  }
+}
 
 interface BriefingData {
   generated_at: string
@@ -17,50 +62,7 @@ interface BriefingData {
   sections: Array<{
     title: string
     emoji: string
-    posts: Array<{
-      authorName: string
-      authorUsername: string
-      authorAvatarUrl?: string
-      verified?: string | null
-      text: string
-      media?: Array<{
-        type: string
-        url?: string
-        preview_image_url?: string
-        video_url?: string
-        alt_text?: string
-      }>
-      metrics?: { likes?: number; reposts?: number; views?: number; replies?: number; bookmarks?: number }
-      postUrl?: string
-      timestamp?: string
-      createdAt?: string
-      category?: string
-      quotedPost?: {
-        authorName: string
-        authorUsername: string
-        authorAvatarUrl?: string
-        verified?: string | null
-        text: string
-        media?: Array<{
-          type: string
-          url?: string
-          preview_image_url?: string
-          video_url?: string
-          alt_text?: string
-        }>
-        metrics?: { likes?: number; reposts?: number; views?: number; replies?: number; bookmarks?: number }
-        postUrl?: string
-        timestamp?: string
-        createdAt?: string
-      }
-      linkCard?: {
-        title: string
-        description?: string
-        thumbnail?: string | null
-        domain?: string
-        url?: string
-      }
-    }>
+    posts: Post[]
   }>
   stats: {
     posts_scanned: number
@@ -70,7 +72,6 @@ interface BriefingData {
   }
 }
 
-// Map section titles → display info
 const SECTION_DISPLAY: Record<string, { label: string; id: string }> = {
   "TOP STORIES": { label: "Top Stories", id: "top_stories" },
   "TRENDING IN YOUR NICHES": { label: "Trending", id: "trending" },
@@ -80,8 +81,8 @@ const SECTION_DISPLAY: Record<string, { label: string; id: string }> = {
   "ARTICLES & THREADS": { label: "Articles", id: "articles" },
 }
 
-// Preferred tab order
-const TAB_ORDER = ["top_stories", "viral", "your_circle", "articles", "trending", "worth_a_look"]
+const TAB_ORDER = ["top_stories", "saved", "viral", "your_circle", "articles", "trending", "worth_a_look"]
+const SAVED_FALLBACK_KEY = "x-brief-saved-post-urls"
 
 function formatStat(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -90,13 +91,17 @@ function formatStat(num: number): string {
 
 function formatLastUpdated(generatedAt: string): string {
   const date = new Date(generatedAt)
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  }) + " at " + date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  })
+  return (
+    date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }) +
+    " at " +
+    date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    })
+  )
 }
 
 function LoadingSkeleton() {
@@ -110,14 +115,14 @@ function LoadingSkeleton() {
 }
 
 function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (!mounted) return null // avoid hydration mismatch
+  if (!mounted) return null
 
   const isDark = resolvedTheme === "dark"
 
@@ -132,11 +137,29 @@ function ThemeToggle() {
   )
 }
 
-/** Extract a stable post ID from a postUrl like https://x.com/user/status/123 */
 function postIdFromUrl(postUrl?: string): string | null {
   if (!postUrl) return null
   const match = postUrl.match(/\/status\/(\d+)/)
   return match ? match[1] : null
+}
+
+function loadSavedFallback(): string[] {
+  try {
+    const raw = localStorage.getItem(SAVED_FALLBACK_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((url) => typeof url === "string") : []
+  } catch {
+    return []
+  }
+}
+
+function saveSavedFallback(urls: string[]) {
+  try {
+    localStorage.setItem(SAVED_FALLBACK_KEY, JSON.stringify(urls))
+  } catch {
+    // ignore
+  }
 }
 
 export function BriefingView() {
@@ -146,39 +169,96 @@ export function BriefingView() {
   const [minutesAgo, setMinutesAgo] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<string>("")
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const [savedUrls, setSavedUrls] = useState<Set<string>>(new Set())
+  const [searchExpanded, setSearchExpanded] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
   const [mediaViewer, setMediaViewer] = useState<{
     items: Array<{ type: string; url?: string; preview_image_url?: string; video_url?: string; alt_text?: string }>
     index: number
   } | null>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const pendingReadRef = useRef<Set<string>>(new Set())
-  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load read state + cleanup on mount, track page_view
   useEffect(() => {
-    clearOldReadState()
-    setReadIds(getReadPostIds())
-    trackEvent("page_view")
+    let cancelled = false
+
+    const init = async () => {
+      clearOldReadState()
+      const localRead = getReadPostIds()
+      setReadIds(localRead)
+
+      const localSaved = new Set(loadSavedFallback())
+      setSavedUrls(localSaved)
+
+      try {
+        const response = await fetch("/api/read-state", { cache: "no-store" })
+        if (response.ok) {
+          const data = await response.json()
+          const serverIds = Array.isArray(data?.ids) ? data.ids.filter((id: unknown) => typeof id === "string") : []
+          if (!cancelled) {
+            setReadIds(new Set([...localRead, ...serverIds]))
+          }
+        }
+      } catch {
+        // localStorage fallback already loaded
+      }
+
+      try {
+        const response = await fetch("/api/saved", { cache: "no-store" })
+        if (response.ok) {
+          const data = await response.json()
+          const serverUrls = Array.isArray(data?.urls)
+            ? data.urls.filter((url: unknown) => typeof url === "string")
+            : []
+          const merged = new Set([...localSaved, ...serverUrls])
+          if (!cancelled) {
+            setSavedUrls(merged)
+            saveSavedFallback(Array.from(merged))
+          }
+        }
+      } catch {
+        // localStorage fallback already loaded
+      }
+
+      trackEvent("page_view")
+    }
+
+    void init()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  // Flush pending read IDs every 2s — saves to localStorage only (for next session).
-  // Does NOT update readIds state, so posts stay visible during the current session.
   useEffect(() => {
-    const flush = () => {
-      if (pendingReadRef.current.size > 0) {
-        const ids = Array.from(pendingReadRef.current)
-        pendingReadRef.current.clear()
-        markPostsAsRead(ids)
+    const flush = async () => {
+      if (pendingReadRef.current.size === 0) return
+      const ids = Array.from(pendingReadRef.current)
+      pendingReadRef.current.clear()
+
+      markPostsAsRead(ids)
+
+      try {
+        await fetch("/api/read-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        })
+      } catch {
+        // localStorage fallback already persisted
       }
     }
-    const interval = setInterval(flush, 2000)
+
+    const interval = setInterval(() => {
+      void flush()
+    }, 2000)
+
     return () => {
       clearInterval(interval)
-      flush() // flush on unmount
+      void flush()
     }
   }, [])
 
-  // Setup IntersectionObserver for marking posts as read + tracking impressions
   useEffect(() => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -198,23 +278,96 @@ export function BriefingView() {
     return () => observerRef.current?.disconnect()
   }, [])
 
-  // Derive tabs from actual briefing data.
-  // On load: filter out previously-read posts to show fresh content.
-  // If ALL posts in a section are read, show them all anyway (never leave an empty tab).
+  const fetchBriefing = useCallback(
+    async (showRefreshing = false) => {
+      if (showRefreshing) setRefreshing(true)
+      try {
+        const response = await fetch("/api/briefing")
+        const data = await response.json()
+        if (!briefing || data.generated_at !== briefing.generated_at) {
+          setBriefing(data)
+        }
+        setLoading(false)
+      } catch (error) {
+        console.error("Failed to fetch briefing:", error)
+        setLoading(false)
+      } finally {
+        if (showRefreshing) setRefreshing(false)
+      }
+    },
+    [briefing]
+  )
+
+  useEffect(() => {
+    void fetchBriefing()
+  }, [fetchBriefing])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void fetchBriefing()
+    }, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [fetchBriefing])
+
+  useEffect(() => {
+    if (!briefing?.generated_at) return
+    const update = () => {
+      const diff = Math.floor((Date.now() - new Date(briefing.generated_at).getTime()) / 60000)
+      setMinutesAgo(diff)
+    }
+    update()
+    const interval = setInterval(update, 60000)
+    return () => clearInterval(interval)
+  }, [briefing?.generated_at])
+
+  const normalizedSearch = searchQuery.trim().toLowerCase()
+  const matchesSearch = useCallback(
+    (post: Post) => {
+      if (!normalizedSearch) return true
+      return (
+        post.text.toLowerCase().includes(normalizedSearch) ||
+        post.authorUsername.toLowerCase().includes(normalizedSearch)
+      )
+    },
+    [normalizedSearch]
+  )
+
+  const allPosts = useMemo(() => {
+    if (!briefing) return [] as Post[]
+    const seen = new Set<string>()
+    const result: Post[] = []
+    for (const section of briefing.sections) {
+      for (const post of section.posts) {
+        const key = post.postUrl || `${post.authorUsername}:${post.text.slice(0, 120)}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        result.push(post)
+      }
+    }
+    return result
+  }, [briefing])
+
+  const savedPosts = useMemo(() => {
+    return allPosts.filter((post) => post.postUrl && savedUrls.has(post.postUrl) && matchesSearch(post))
+  }, [allPosts, matchesSearch, savedUrls])
+
   const availableTabs = useMemo(() => {
-    if (!briefing) return []
-    return briefing.sections
+    if (!briefing) return [] as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number }>
+
+    const dynamicTabs = briefing.sections
       .map((s) => {
         const display = SECTION_DISPLAY[s.title]
         if (!display) return null
-        // Filter out read posts
+
         const unread = s.posts.filter((p) => {
           const id = postIdFromUrl(p.postUrl)
           return !id || !readIds.has(id)
         })
-        // If everything is read, show all posts — never leave an empty section
-        const postsToShow = unread.length > 0 ? unread : s.posts
+
+        const basePosts = unread.length > 0 ? unread : s.posts
+        const postsToShow = basePosts.filter(matchesSearch)
         if (postsToShow.length === 0) return null
+
         return {
           ...display,
           posts: postsToShow,
@@ -222,13 +375,29 @@ export function BriefingView() {
           totalCount: s.posts.length,
         }
       })
-      .filter(Boolean)
-      .sort((a, b) => {
-        const ai = TAB_ORDER.indexOf(a!.id)
-        const bi = TAB_ORDER.indexOf(b!.id)
-        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
-      }) as Array<{ label: string; id: string; posts: BriefingData["sections"][0]["posts"]; count: number; totalCount: number }>
-  }, [briefing, readIds])
+      .filter(Boolean) as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number }>
+
+    dynamicTabs.push({
+      label: "Saved",
+      id: "saved",
+      posts: savedPosts,
+      count: savedPosts.length,
+      totalCount: savedPosts.length,
+    })
+
+    return dynamicTabs.sort((a, b) => {
+      const ai = TAB_ORDER.indexOf(a.id)
+      const bi = TAB_ORDER.indexOf(b.id)
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+    })
+  }, [briefing, matchesSearch, readIds, savedPosts])
+
+  useEffect(() => {
+    if (availableTabs.length === 0) return
+    if (!activeTab || !availableTabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab(availableTabs[0].id)
+    }
+  }, [activeTab, availableTabs])
 
   const tabIds = useMemo(() => availableTabs.map((t) => t.id), [availableTabs])
 
@@ -244,83 +413,51 @@ export function BriefingView() {
     enabled: availableTabs.length > 1,
   })
 
-  // Set default active tab when briefing loads
-  useEffect(() => {
-    if (availableTabs.length > 0 && !activeTab) {
-      setActiveTab(availableTabs[0].id)
-    }
-  }, [availableTabs.length, activeTab])
+  const savePost = useCallback(async (postUrl: string) => {
+    setSavedUrls((prev) => {
+      if (prev.has(postUrl)) return prev
+      const next = new Set(prev)
+      next.add(postUrl)
+      saveSavedFallback(Array.from(next))
+      return next
+    })
 
-  const fetchBriefing = useCallback(async (showRefreshing = false) => {
-    if (showRefreshing) setRefreshing(true)
     try {
-      const response = await fetch("/api/briefing")
-      const data = await response.json()
-      if (!briefing || data.generated_at !== briefing.generated_at) {
-        setBriefing(data)
-      }
-      setLoading(false)
-    } catch (error) {
-      console.error("Failed to fetch briefing:", error)
-      setLoading(false)
-    } finally {
-      if (showRefreshing) setRefreshing(false)
+      await fetch("/api/saved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls: [postUrl] }),
+      })
+    } catch {
+      // local fallback already persisted
     }
-  }, [briefing])
-
-  // Initial fetch
-  useEffect(() => {
-    fetchBriefing()
   }, [])
 
-  // Poll every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => fetchBriefing(), 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [fetchBriefing])
-
-  // Update "X ago" every minute
-  useEffect(() => {
-    if (!briefing?.generated_at) return
-    const update = () => {
-      const diff = Math.floor((Date.now() - new Date(briefing.generated_at).getTime()) / 60000)
-      setMinutesAgo(diff)
-    }
-    update()
-    const interval = setInterval(update, 60000)
-    return () => clearInterval(interval)
-  }, [briefing?.generated_at])
-
-  const isStale = minutesAgo > 720 // 12 hours
+  const isStale = minutesAgo > 480
+  const staleHours = Math.floor(minutesAgo / 60)
 
   const relativeTime =
     minutesAgo < 1
       ? "just now"
       : minutesAgo < 60
-      ? `${minutesAgo}m ago`
-      : minutesAgo < 1440
-      ? `${Math.floor(minutesAgo / 60)}h ago`
-      : `${Math.floor(minutesAgo / 1440)}d ago`
+        ? `${minutesAgo}m ago`
+        : minutesAgo < 1440
+          ? `${Math.floor(minutesAgo / 60)}h ago`
+          : `${Math.floor(minutesAgo / 1440)}d ago`
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-[598px] mx-auto">
           <div className="flex items-center justify-between px-4 h-[53px]">
-            {/* Logo + timestamp */}
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-foreground tracking-tight">
-                𝕏 Brief
-              </h1>
+              <h1 className="text-xl font-bold text-foreground tracking-tight">𝕏 Brief</h1>
               {briefing && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[13px] text-muted-foreground">
-                    Updated {relativeTime}
-                  </span>
+                  <span className="text-[13px] text-muted-foreground">Updated {relativeTime}</span>
                   {isStale && (
                     <span
-                      title="Data may be stale — last update was over 12 hours ago"
+                      title="Data may be stale — last update was over 8 hours ago"
                       className="flex items-center gap-0.5 text-[12px] text-amber-500 dark:text-amber-400"
                     >
                       <AlertTriangle className="h-3 w-3" />
@@ -331,11 +468,10 @@ export function BriefingView() {
               )}
             </div>
 
-            {/* Actions */}
             <div className="flex items-center gap-1">
               {briefing && (
                 <button
-                  onClick={() => fetchBriefing(true)}
+                  onClick={() => void fetchBriefing(true)}
                   disabled={refreshing}
                   aria-label="Refresh briefing"
                   className="flex items-center justify-center h-8 w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors disabled:opacity-50"
@@ -349,19 +485,11 @@ export function BriefingView() {
         </div>
       </header>
 
-      {/* Loading */}
       {loading && <LoadingSkeleton />}
 
-      {/* Main content */}
       {!loading && briefing && availableTabs.length > 0 && (
-        <div className="w-full" style={{ overflowX: 'clip' }}>
-          <Tabs
-            key={briefing.generated_at}
-            value={activeTab}
-            onValueChange={handleTabChange}
-            className="w-full"
-          >
-            {/* Tab navigation */}
+        <div className="w-full" style={{ overflowX: "clip" }}>
+          <Tabs key={briefing.generated_at} value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="sticky top-[54px] z-40 bg-background/95 backdrop-blur-md border-b border-border">
               <div className="max-w-[598px] mx-auto overflow-x-auto scrollbar-hide">
                 <TabsList className="w-full h-auto p-0 bg-transparent rounded-none border-0 flex">
@@ -371,57 +499,114 @@ export function BriefingView() {
                       value={tab.id}
                       className="relative flex-1 py-4 px-3 rounded-none border-0 bg-transparent text-[15px] font-medium text-muted-foreground hover:bg-foreground/[0.03] data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold transition-colors after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-14 after:h-1 after:bg-[#1d9bf0] after:rounded-full after:opacity-0 data-[state=active]:after:opacity-100 after:transition-all after:duration-200"
                     >
-                      <span className="text-[15px] whitespace-nowrap">
-                        {tab.label}
-                      </span>
+                      <span className="text-[15px] whitespace-nowrap">{tab.label}</span>
                     </TabsTrigger>
                   ))}
                 </TabsList>
               </div>
+
+              <div className="max-w-[598px] mx-auto px-4 pb-3">
+                <div className="flex items-center justify-end gap-2">
+                  {!searchExpanded ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchExpanded(true)}
+                      className="h-8 w-8 rounded-full border border-border text-muted-foreground hover:text-[#1d9bf0] hover:border-[#1d9bf0]/40 transition-colors flex items-center justify-center"
+                      aria-label="Search posts"
+                    >
+                      <Search className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="relative flex-1">
+                        <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search posts or @username"
+                          className="w-full h-9 rounded-full border border-border bg-background pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-[#1d9bf0]/40"
+                        />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            aria-label="Clear search"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchExpanded(false)
+                          setSearchQuery("")
+                        }}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Tab content */}
-            <div
-              ref={swipeRef}
-              className="max-w-[598px] w-full mx-auto md:border-x md:border-border min-h-screen overflow-hidden"
-            >
+            <div ref={swipeRef} className="max-w-[598px] w-full mx-auto md:border-x md:border-border min-h-screen overflow-hidden">
+              {isStale && (
+                <div className="px-4 py-3 border-b border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  <span>Briefing is {staleHours} hours old — data may be stale</span>
+                </div>
+              )}
+
               {availableTabs.map((tab) => (
                 <TabsContent
                   key={tab.id}
                   value={tab.id}
                   className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
                 >
-                  <div>
-                    {tab.posts.map((post, index) => {
-                      const pid = postIdFromUrl(post.postUrl)
-                      return (
-                        <div
-                          key={pid || `${post.authorUsername}-${index}`}
-                          data-post-id={pid || undefined}
-                          ref={(el) => {
-                            if (el && pid && observerRef.current) {
-                              observerRef.current.observe(el)
-                            }
-                          }}
-                          className="px-4 py-3 border-b border-border cursor-pointer hover:bg-foreground/[0.03] transition-colors overflow-hidden"
-                          onClick={() => {
-                            if (post.postUrl) {
-                              trackEvent("post_click", { postId: pid || post.authorUsername })
-                              window.open(post.postUrl, "_blank", "noopener,noreferrer")
-                            }
-                          }}
-                        >
-                          <PostCard
-                            {...post}
-                            onMediaOpen={(items, idx) => {
-                              trackEvent("media_open", { postId: pid || post.authorUsername })
-                              setMediaViewer({ items, index: idx })
+                  {tab.posts.length === 0 ? (
+                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      {tab.id === "saved" ? "No saved posts yet." : "No posts match your search."}
+                    </div>
+                  ) : (
+                    <div>
+                      {tab.posts.map((post, index) => {
+                        const pid = postIdFromUrl(post.postUrl)
+                        return (
+                          <div
+                            key={pid || `${post.authorUsername}-${index}`}
+                            data-post-id={pid || undefined}
+                            ref={(el) => {
+                              if (el && pid && observerRef.current) {
+                                observerRef.current.observe(el)
+                              }
                             }}
-                          />
-                        </div>
-                      )
-                    })}
-                  </div>
+                            className="px-4 py-3 border-b border-border cursor-pointer hover:bg-foreground/[0.03] transition-colors overflow-hidden"
+                            onClick={() => {
+                              if (post.postUrl) {
+                                trackEvent("post_click", { postId: pid || post.authorUsername })
+                                window.open(post.postUrl, "_blank", "noopener,noreferrer")
+                              }
+                            }}
+                          >
+                            <PostCard
+                              {...post}
+                              isSaved={!!post.postUrl && savedUrls.has(post.postUrl)}
+                              onToggleSaved={(url) => void savePost(url)}
+                              onMediaOpen={(items, idx) => {
+                                trackEvent("media_open", { postId: pid || post.authorUsername })
+                                setMediaViewer({ items, index: idx })
+                              }}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </TabsContent>
               ))}
             </div>
@@ -429,24 +614,17 @@ export function BriefingView() {
         </div>
       )}
 
-      {/* No briefing yet */}
       {!loading && (!briefing || availableTabs.length === 0) && (
         <div className="max-w-[598px] mx-auto md:border-x md:border-border px-4 text-center py-20">
-          <p className="text-[15px] text-muted-foreground">
-            No briefing available yet.
-          </p>
-          <p className="text-[13px] text-muted-foreground mt-2">
-            Run the pipeline to generate your first briefing.
-          </p>
+          <p className="text-[15px] text-muted-foreground">No briefing available yet.</p>
+          <p className="text-[13px] text-muted-foreground mt-2">Run the pipeline to generate your first briefing.</p>
         </div>
       )}
 
-      {/* Footer */}
       {!loading && briefing && (
         <div className="max-w-[598px] mx-auto md:border-x md:border-border px-4 py-8 border-t border-t-border">
           <p className="text-center text-[12px] text-muted-foreground/60">
-            Scanned {formatStat(briefing.stats.posts_scanned)} posts from{" "}
-            {briefing.stats.accounts_tracked} accounts
+            Scanned {formatStat(briefing.stats.posts_scanned)} posts from {briefing.stats.accounts_tracked} accounts
           </p>
           <p className="text-center text-[11px] text-muted-foreground/40 mt-1">
             Last updated {formatLastUpdated(briefing.generated_at)}
@@ -454,7 +632,6 @@ export function BriefingView() {
         </div>
       )}
 
-      {/* Full-screen media viewer */}
       {mediaViewer && (
         <MediaViewer
           items={mediaViewer.items}
