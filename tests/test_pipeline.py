@@ -141,6 +141,8 @@ def test_run_briefing_from_scans_happy_path_writes_json_output(tmp_path: Path, m
     assert exported_post["postUrl"] == "https://x.com/alice/status/101"
     assert re.fullmatch(r"\d+[mhd]", exported_post["timestamp"])
     assert exported_post["verified"] == "blue"
+    assert exported_post["is_article"] is False
+    assert exported_post["thread_posts"] == []
     assert exported_post["createdAt"] == post.created_at.isoformat()
     status_payload = json.loads((data_dir / "pipeline-status.json").read_text(encoding="utf-8"))
 

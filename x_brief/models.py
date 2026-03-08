@@ -3,7 +3,7 @@ Data models for X Brief using Pydantic v2
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -37,6 +37,13 @@ class QuotedPost(BaseModel):
     post_url: Optional[str] = None
 
 
+class ThreadPost(BaseModel):
+    """Connected post in a thread."""
+    id: Optional[str] = None
+    text: str = ""
+    url: Optional[str] = None
+
+
 class Post(BaseModel):
     """Represents a post/tweet from X"""
     id: str
@@ -50,6 +57,10 @@ class Post(BaseModel):
     media: list[PostMedia] = Field(default_factory=list)
     media_urls: list[str] = Field(default_factory=list)  # Deprecated, kept for compatibility
     urls: list[str] = Field(default_factory=list)
+    source: Optional[Literal["for_you", "following"]] = None
+    is_article: bool = False
+    article_url: Optional[str] = None
+    thread_posts: list[ThreadPost] = Field(default_factory=list)
     is_repost: bool = False
     is_quote: bool = False
     quoted_post_id: Optional[str] = None

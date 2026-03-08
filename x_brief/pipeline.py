@@ -8,7 +8,7 @@ from pathlib import Path
 
 from x_brief.config import load_user_config
 from x_brief.curator import curate_briefing
-from x_brief.scan_reader import load_scan_posts, build_users_from_posts
+from x_brief.scan_reader import build_post_url, load_scan_posts, build_users_from_posts
 from x_brief.dedup import load_brief_history, filter_already_briefed, save_brief_history
 
 
@@ -276,7 +276,18 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
                     "replies": post.metrics.replies,
                     "bookmarks": post.metrics.bookmarks,
                 },
-                "postUrl": f"https://x.com/{clean_author_username}/status/{post.id}",
+                "postUrl": build_post_url(post),
+                "source": post.source,
+                "is_article": post.is_article,
+                "article_url": post.article_url,
+                "thread_posts": [
+                    {
+                        "id": tp.id,
+                        "text": tp.text,
+                        "url": tp.url,
+                    }
+                    for tp in post.thread_posts
+                ],
                 "timestamp": _relative_time(post.created_at),
                 "createdAt": post.created_at.isoformat() if post.created_at else None,
                 "category": item.category,

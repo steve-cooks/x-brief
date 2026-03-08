@@ -16,6 +16,7 @@ def make_scan_post(
     verified: bool | None = None,
     avatar_url: str | None = None,
     url: str | None = None,
+    source: str | None = None,
     metrics: dict | None = None,
 ) -> dict:
     username = author.lstrip("@")
@@ -36,6 +37,8 @@ def make_scan_post(
         data["verified"] = verified
     if avatar_url is not None:
         data["avatar_url"] = avatar_url
+    if source is not None:
+        data["source"] = source
     return data
 
 
@@ -68,6 +71,7 @@ def test_load_scan_posts_reads_recent_scans_deduplicates_and_filters_invalid_url
                 "@alice",
                 posted_at="2h ago",
                 verified=True,
+                source="for_you",
                 metrics={
                     "likes": "1.2K",
                     "reposts": "45",
@@ -118,6 +122,7 @@ def test_load_scan_posts_reads_recent_scans_deduplicates_and_filters_invalid_url
     assert posts_by_id["100"].text == "Useful scan post text"
     assert posts_by_id["100"].metrics.likes == 1_200
     assert posts_by_id["100"].metrics.views == 3_000_000
+    assert posts_by_id["100"].source == "for_you"
     assert posts_by_id["100"].created_at == now - timedelta(hours=4)
     assert posts_by_id["200"].created_at == datetime(2026, 3, 7, 10, 15, tzinfo=timezone.utc)
     assert scan_verified == {"alice": True, "bob": False}
@@ -166,6 +171,49 @@ def test_load_scan_posts_parses_relative_and_absolute_posted_at_values(tmp_path:
     assert posts_by_id["101"].created_at == scan_time - timedelta(hours=2)
     assert posts_by_id["102"].created_at == datetime(2026, 3, 7, 0, 0, tzinfo=timezone.utc)
     assert posts_by_id["103"].created_at == datetime(2026, 3, 7, 8, 30, tzinfo=timezone.utc)
+
+
+def test_load_scan_posts_detects_articles_and_threads(tmp_path: Path) -> None:
+    scan_dir = tmp_path / "timeline_scans"
+    scan_time = datetime.now(timezone.utc).replace(microsecond=0)
+
+    write_scan_file(
+        scan_dir,
+        "2026-03-08-11.json",
+        scan_time=scan_time,
+        posts=[
+            make_scan_post(
+                "900",
+                "@writer",
+                text="Long form read https://x.com/writer/article/abc123",
+                posted_at="10m ago",
+                source="for_you",
+            ),
+            make_scan_post(
+                "901",
+                "@threader",
+                text="1/3 Building agents is all about iteration",
+                posted_at="12m ago",
+                source="following",
+            ),
+            make_scan_post(
+                "902",
+                "@threader",
+                text="2/3 You need high quality eval loops",
+                posted_at="9m ago",
+                source="following",
+            ),
+        ],
+    )
+
+    posts, _ = load_scan_posts(str(scan_dir), hours=24)
+    posts_by_id = {post.id: post for post in posts}
+
+    assert posts_by_id["900"].is_article is True
+    assert posts_by_id["900"].article_url == "https://x.com/writer/article/abc123"
+
+    assert posts_by_id["901"].thread_posts
+    assert any(tp.id == "902" for tp in posts_by_id["901"].thread_posts)
 
 
 def test_load_scan_posts_raises_on_invalid_json(tmp_path: Path) -> None:

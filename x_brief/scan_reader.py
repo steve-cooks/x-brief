@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
-from x_brief.models import Post, PostMetrics, PostMedia, QuotedPost, User
+from x_brief.models import Post, PostMetrics, PostMedia, QuotedPost, ThreadPost, User
 
 
 # Known-verified accounts fallback (major accounts that are verified on X)
@@ -78,11 +78,23 @@ KNOWN_VERIFIED_ACCOUNTS: dict[str, str] = {
 # Keep clean lowercase usernames only
 KNOWN_VERIFIED_ACCOUNTS = {k.lower().strip(): v for k, v in KNOWN_VERIFIED_ACCOUNTS.items()}
 
+ARTICLE_URL_RE = re.compile(r'https?://(?:www\.)?(?:x|twitter)\.com/[^/\s]+/article/[A-Za-z0-9_-]+', re.IGNORECASE)
+THREAD_MARKER_RE = re.compile(r'(?:\b\d+\s*/\s*\d+\b|\bthread\b|🧵)', re.IGNORECASE)
+
 
 def extract_post_id(url: str) -> Optional[str]:
-    """Extract post ID from X/Twitter URL."""
-    match = re.search(r'/status/(\d+)', url)
-    return match.group(1) if match else None
+    """Extract post/article ID from X/Twitter URL."""
+    if not url:
+        return None
+    status_match = re.search(r'/status/(\d+)', url)
+    if status_match:
+        return status_match.group(1)
+
+    article_match = re.search(r'/article/([A-Za-z0-9_-]+)', url)
+    if article_match:
+        return f"article:{article_match.group(1)}"
+
+    return None
 
 
 def extract_username(handle_or_url: str) -> str:
@@ -191,6 +203,94 @@ def sanitize_pinned(value: str) -> str:
     return value.replace(" (pinned)", "").replace("(pinned)", "").strip()
 
 
+def normalize_source(value: object) -> Optional[str]:
+    """Normalize scan source to for_you/following/None."""
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().lower().replace("-", "_").replace(" ", "_")
+    if normalized in {"for_you", "foryou"}:
+        return "for_you"
+    if normalized == "following":
+        return "following"
+    return None
+
+
+def detect_article_url(post_url: str, urls: list[str]) -> Optional[str]:
+    """Find first X article URL in post or linked URLs."""
+    candidates = [post_url, *urls]
+    for candidate in candidates:
+        if candidate and ARTICLE_URL_RE.search(candidate):
+            return candidate
+    return None
+
+
+def build_post_url(post: Post) -> str:
+    """Build a stable URL for a post/article."""
+    if post.is_article and post.article_url:
+        return post.article_url
+    if post.id.startswith("article:") and post.article_url:
+        return post.article_url
+    return f"https://x.com/{post.author_username}/status/{post.id}"
+
+
+def _thread_connected(prev: Post, cur: Post) -> bool:
+    """Heuristic for adjacent posts likely being part of same thread."""
+    if prev.author_id != cur.author_id:
+        return False
+
+    if prev.conversation_id and cur.conversation_id and prev.conversation_id == cur.conversation_id:
+        return True
+
+    age_diff_minutes = abs((prev.created_at - cur.created_at).total_seconds()) / 60
+    if age_diff_minutes > 90:
+        return False
+
+    if THREAD_MARKER_RE.search(prev.text) or THREAD_MARKER_RE.search(cur.text):
+        return True
+
+    # Fallback: same author + near-adjacent + both substantive text
+    return len(prev.text.strip()) > 40 and len(cur.text.strip()) > 40
+
+
+def annotate_threads(posts: list[Post]) -> None:
+    """Populate thread_posts for likely thread chains from same author."""
+    if len(posts) < 2:
+        return
+
+    by_author: dict[str, list[Post]] = {}
+    for post in posts:
+        by_author.setdefault(post.author_id, []).append(post)
+
+    for author_posts in by_author.values():
+        if len(author_posts) < 2:
+            continue
+
+        ordered = sorted(author_posts, key=lambda p: p.created_at)
+        i = 0
+        while i < len(ordered) - 1:
+            chain = [ordered[i]]
+            j = i + 1
+            while j < len(ordered) and _thread_connected(chain[-1], ordered[j]):
+                chain.append(ordered[j])
+                j += 1
+
+            if len(chain) >= 2:
+                for idx, post in enumerate(chain):
+                    connected: list[ThreadPost] = []
+                    for k, part in enumerate(chain):
+                        if k == idx:
+                            continue
+                        connected.append(
+                            ThreadPost(
+                                id=part.id,
+                                text=part.text,
+                                url=build_post_url(part),
+                            )
+                        )
+                    post.thread_posts = connected
+            i = j if len(chain) >= 2 else i + 1
+
+
 def extract_media_from_post(post_data: dict, text: str) -> list[PostMedia]:
     """
     Extract media items from scan post data.
@@ -295,7 +395,7 @@ def extract_quoted_post(post_data: dict) -> Optional[QuotedPost]:
 def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
     """Convert a scan post dict to a Post object."""
     try:
-        # Extract post ID from URL
+        # Extract post/article ID from URL
         url = post_data.get('url', '')
         post_id = extract_post_id(url)
         if not post_id:
@@ -359,12 +459,20 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         is_quote = quoted_post is not None
         quoted_post_id = quoted_post.id if quoted_post else None
         
-        # Extract URLs from text
+        # Extract URLs from text (plus explicit URL fields if present)
         urls = re.findall(r'https?://\S+', text)
+        explicit_urls = post_data.get('urls') if isinstance(post_data.get('urls'), list) else []
+        for u in explicit_urls:
+            if isinstance(u, str) and u not in urls:
+                urls.append(u)
 
         # Parse posted_at for accurate post time
         posted_at_str = post_data.get('posted_at') or post_data.get('time') or ''
         parsed_time = parse_posted_at(posted_at_str, scan_time) or scan_time
+
+        source = normalize_source(post_data.get('source'))
+        article_url = detect_article_url(url, urls)
+        is_article = article_url is not None
 
         # Create Post object
         post = Post(
@@ -378,10 +486,14 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
             metrics=metrics,
             media=media_items,
             urls=urls,
+            source=source,
+            is_article=is_article,
+            article_url=article_url,
             is_repost=False,
             is_quote=is_quote,
             quoted_post_id=quoted_post_id,
             quoted_post=quoted_post,
+            conversation_id=post_data.get('conversation_id') or post_data.get('conversationId'),
         )
         
         return post
@@ -455,6 +567,7 @@ def load_scan_posts(scan_dir: str, hours: int = 48) -> tuple[list[Post], dict[st
                     posts_by_id[post.id] = post
     
     posts = list(posts_by_id.values())
+    annotate_threads(posts)
     print(f"✅ Loaded {len(posts)} unique posts from {scans_loaded} scan files")
     
     return posts, scan_verified
