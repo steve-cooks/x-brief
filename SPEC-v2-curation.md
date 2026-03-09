@@ -164,6 +164,21 @@ The fetched text is HTML-unescaped and trailing `t.co` URLs are stripped before 
 A 200ms delay is applied between fxtwitter requests to avoid rate limiting.
 If both endpoints fail, the truncated syndication text is kept as-is.
 
+### Community Notes
+
+When the fxtwitter API response includes a `communityNote` field, enrichment extracts
+the note text and optional URL and stores it as `communityNote: { text, url }` on the post.
+
+The frontend renders community notes in an amber info box below the post text,
+matching X's "Readers added context" style. This provides important fact-checking
+context alongside posts that have been flagged by community contributors.
+
+### HTML Entity Decoding
+
+All post text passes through `html.unescape()` during enrichment to convert
+literal HTML entities (`&gt;`, `&amp;`, `&lt;`, etc.) into their proper characters.
+This applies to both syndication text and fxtwitter-sourced text.
+
 ---
 
 ## Notes on intentional non-features
