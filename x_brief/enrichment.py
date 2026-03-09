@@ -9,6 +9,7 @@ Usage:
 """
 
 import asyncio
+import html
 import json
 import os
 import re
@@ -39,6 +40,45 @@ def _fetch_syndication(tweet_id: str) -> Optional[dict]:
             return json.loads(resp.read().decode("utf-8"))
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
         return None
+
+
+def _fetch_oembed_text(username: str, tweet_id: str) -> Optional[str]:
+    """Fetch full post text via Twitter oEmbed API for long posts (note_tweets).
+
+    X's syndication API truncates note_tweets at ~280 chars. The oEmbed endpoint
+    returns the full rendered HTML, from which we extract the complete text.
+    Returns None on failure or if oEmbed doesn't add more content.
+    """
+    oembed_url = (
+        f"https://publish.twitter.com/oembed"
+        f"?url=https://x.com/{username}/status/{tweet_id}&omit_script=true"
+    )
+    req = urllib.request.Request(oembed_url, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            oembed_data = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        return None
+
+    oembed_html = oembed_data.get("html", "")
+    if not oembed_html:
+        return None
+
+    # Extract text from the <p> block inside the blockquote
+    # oEmbed wraps the tweet text in: <blockquote ...><p lang="...">TEXT<a ...>
+    p_match = re.search(r'<p[^>]*>(.*?)</p>', oembed_html, re.DOTALL)
+    if not p_match:
+        return None
+
+    p_content = p_match.group(1)
+    # Remove any <a ...>...</a> tags (links / pic.twitter refs)
+    p_content = re.sub(r'<a[^>]*>.*?</a>', '', p_content, flags=re.DOTALL)
+    # Remove remaining HTML tags
+    p_content = re.sub(r'<[^>]+>', '', p_content)
+    # Decode HTML entities
+    p_content = html.unescape(p_content).strip()
+
+    return p_content if p_content else None
 
 
 def _best_mp4_variant(video_info: dict) -> Optional[str]:
@@ -264,17 +304,29 @@ async def enrich_with_syndication_async(json_path: str) -> None:
                 if tco and display:
                     synd_text = synd_text.replace(tco, display)
             # Strip any remaining trailing t.co links
-            import re as _re
-            synd_text = _re.sub(r'\s*https://t\.co/\S+\s*$', '', synd_text).strip()
+            synd_text = re.sub(r'\s*https://t\.co/\S+\s*$', '', synd_text).strip()
+            # Decode HTML entities (e.g. &gt; → >, &amp; → &)
+            synd_text = html.unescape(synd_text)
+
+            # Long posts (note_tweets): syndication truncates at ~280 chars.
+            # Fetch full text via oEmbed when note_tweet key is present.
+            if "note_tweet" in tweet_data:
+                username = post.get("authorUsername", "")
+                if username and tweet_id:
+                    oembed_text = await asyncio.to_thread(
+                        _fetch_oembed_text, username, tweet_id
+                    )
+                    if oembed_text and len(oembed_text) > len(synd_text):
+                        synd_text = oembed_text
+
             if synd_text and synd_text != post.get("text", ""):
                 post["text"] = synd_text
                 changes += 1
         else:
             # Syndication didn't return text — clean up existing text
-            import re as _re
             current_text = post.get("text", "")
             if "https://t.co/" in current_text:
-                current_text = _re.sub(r'\s*https://t\.co/\S+\s*$', '', current_text).strip()
+                current_text = re.sub(r'\s*https://t\.co/\S+\s*$', '', current_text).strip()
                 post["text"] = current_text
 
         if not post.get("media"):

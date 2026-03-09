@@ -5,6 +5,7 @@ module is intentionally defensive so one malformed file/post does not block the
 brief. It normalizes timestamps, metrics, media, quoted content, and source
 fields into a stable internal contract.
 """
+import html
 import json
 import re
 from datetime import datetime, timezone, timedelta
@@ -493,6 +494,8 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         text = post_data.get('text', '')
         text = re.sub(r'\[(?:screenshot|image|photo|video|gif|quoting|quote|Video post)[^\]]*\]', '', text, flags=re.IGNORECASE)
         text = re.sub(r'\s{2,}', ' ', text).strip()
+        # Decode HTML entities (e.g. &gt; → >, &amp; → &, &lt; → <)
+        text = html.unescape(text)
         media_items = extract_media_from_post(post_data, text)
         
         # Extract quoted tweet
