@@ -151,6 +151,19 @@ actual text is stored and displayed.
 
 Trailing `t.co` tracking URLs are also removed during enrichment.
 
+### Long posts (note_tweets)
+
+X's syndication API truncates "note tweets" (long-form posts) at ~280 characters.
+When the syndication response contains a `note_tweet` key, enrichment fetches the
+complete text via the **fxtwitter API** (`api.fxtwitter.com`):
+
+- **Primary:** `https://api.fxtwitter.com/status/{tweet_id}` — returns `tweet.text` with full content, no auth required.
+- **Fallback:** `https://api.vxtwitter.com/status/{tweet_id}` — same response format.
+
+The fetched text is HTML-unescaped and trailing `t.co` URLs are stripped before use.
+A 200ms delay is applied between fxtwitter requests to avoid rate limiting.
+If both endpoints fail, the truncated syndication text is kept as-is.
+
 ---
 
 ## Notes on intentional non-features
