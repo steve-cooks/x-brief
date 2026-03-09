@@ -42,20 +42,20 @@ def _fetch_syndication(tweet_id: str) -> Optional[dict]:
         return None
 
 
-def _fetch_full_text_via_scrape(username: str, tweet_id: str) -> Optional[str]:
-    """Fetch full post text for long posts (note_tweets) via fxtwitter API.
+def _fetch_fxtwitter_data(tweet_id: str) -> dict:
+    """Fetch enriched tweet data from fxtwitter API.
 
-    X's syndication API truncates note_tweets at ~280 chars. The fxtwitter API
-    (api.fxtwitter.com) returns the complete untruncated text without auth.
-    Falls back to vxtwitter if fxtwitter fails.
+    Returns a dict with keys:
+      - text: Optional[str] — full untruncated post text (HTML-unescaped, t.co stripped)
+      - community_note: Optional[dict] — {text: str, url: Optional[str]} if note exists
 
-    Returns clean, HTML-unescaped text with trailing t.co URLs stripped,
-    or None on failure.
+    Tries fxtwitter first, falls back to vxtwitter. Returns empty dict on failure.
     """
     endpoints = [
         f"https://api.fxtwitter.com/status/{tweet_id}",
         f"https://api.vxtwitter.com/status/{tweet_id}",
     ]
+    result: dict = {}
     for url in endpoints:
         req = urllib.request.Request(
             url,
@@ -68,16 +68,44 @@ def _fetch_full_text_via_scrape(username: str, tweet_id: str) -> Optional[str]:
             continue
 
         tweet = data.get("tweet") or data.get("data", {})
+
+        # Extract full text
         text = tweet.get("text", "")
-        if not text:
-            continue
+        if text:
+            text = html.unescape(text)
+            text = re.sub(r'\s*https://t\.co/\S+\s*$', '', text).strip()
+            if text:
+                result["text"] = text
 
-        # Decode HTML entities and strip trailing t.co tracking URLs
-        text = html.unescape(text)
-        text = re.sub(r'\s*https://t\.co/\S+\s*$', '', text).strip()
-        return text if text else None
+        # Extract community note if present
+        cn = tweet.get("community_note")
+        if cn and cn.get("text"):
+            cn_text = cn["text"]
+            # Resolve any t.co URL in entities to get a clean link
+            cn_url: Optional[str] = None
+            for entity in cn.get("entities", []):
+                ref = entity.get("ref", {})
+                resolved = ref.get("url", "")
+                if resolved and resolved.startswith("http"):
+                    cn_url = resolved
+                    break
+            result["community_note"] = {"text": cn_text, "url": cn_url}
 
-    return None
+        # We got data from this endpoint; stop trying others
+        if result:
+            return result
+
+    return result
+
+
+def _fetch_full_text_via_scrape(username: str, tweet_id: str) -> Optional[str]:
+    """Fetch full post text for long posts (note_tweets) via fxtwitter API.
+
+    Thin wrapper around _fetch_fxtwitter_data for backward compatibility.
+    Returns clean, HTML-unescaped text with trailing t.co URLs stripped,
+    or None on failure.
+    """
+    return _fetch_fxtwitter_data(tweet_id).get("text")
 
 
 def _best_mp4_variant(video_info: dict) -> Optional[str]:
@@ -309,19 +337,28 @@ async def enrich_with_syndication_async(json_path: str) -> None:
 
             # Long posts (note_tweets): syndication truncates at ~280 chars.
             # Fetch full text via fxtwitter API when note_tweet key is present.
+            # Also extract community notes from the same API response.
             if "note_tweet" in tweet_data:
                 username_for_fetch = post.get("authorUsername", "")
                 if username_for_fetch and tweet_id:
                     # Extra pacing between fxtwitter requests (200ms)
                     await asyncio.sleep(0.2)
-                    full_text = await asyncio.to_thread(
-                        _fetch_full_text_via_scrape, username_for_fetch, tweet_id
+                    fx_data = await asyncio.to_thread(
+                        _fetch_fxtwitter_data, tweet_id
                     )
+                    full_text = fx_data.get("text")
                     if full_text and len(full_text) > len(synd_text):
                         print(f"    📝 Full text fetched for @{username_for_fetch}/{tweet_id} ({len(full_text)} chars)")
                         synd_text = full_text
                     else:
                         print(f"    ⚠️  Full text fetch failed for @{username_for_fetch}/{tweet_id}, using syndication text")
+
+                    # Store community note if found and not already present
+                    cn = fx_data.get("community_note")
+                    if cn and not post.get("communityNote"):
+                        post["communityNote"] = cn
+                        changes += 1
+                        print(f"    📋 Community note found for @{username_for_fetch}/{tweet_id}")
 
             if synd_text and synd_text != post.get("text", ""):
                 post["text"] = synd_text

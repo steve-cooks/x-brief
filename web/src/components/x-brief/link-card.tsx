@@ -24,7 +24,7 @@ export function EnrichedLinkCard({ card }: { card: LinkCardData }) {
       onClick={(e) => e.stopPropagation()}
     >
       {card.thumbnail && (
-        <div className="relative aspect-[1.91/1] bg-accent overflow-hidden">
+        <div className="relative aspect-[1.91/1] bg-accent rounded-t-2xl overflow-hidden border-b border-border">
           <img
             src={proxyUrl(card.thumbnail)}
             alt={card.title}
@@ -113,7 +113,7 @@ export function ArticleCard({
     >
       {/* Hero image */}
       {thumbnail && (
-        <div className="relative w-full aspect-[16/9] bg-accent overflow-hidden">
+        <div className="relative w-full aspect-[16/9] bg-accent rounded-t-2xl overflow-hidden border-b border-border">
           <img
             src={proxyUrl(thumbnail)}
             alt={title || "Article cover"}

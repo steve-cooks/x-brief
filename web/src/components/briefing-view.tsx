@@ -58,6 +58,10 @@ interface Post {
     domain?: string
     url?: string
   }
+  communityNote?: {
+    text: string
+    url?: string | null
+  } | null
 }
 
 interface BriefingData {

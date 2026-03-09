@@ -126,6 +126,41 @@ function VerificationBadge({ type, size = 18 }: { type: string; size?: number })
   )
 }
 
+interface CommunityNoteData {
+  text: string
+  url?: string | null
+}
+
+function CommunityNote({ note }: { note: CommunityNoteData }) {
+  return (
+    <div className="mt-3 rounded-2xl border border-amber-200/60 bg-amber-50/80 dark:border-amber-700/40 dark:bg-amber-950/30 px-3 py-2.5">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        {/* Community Notes info icon */}
+        <svg viewBox="0 0 20 20" className="h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" fill="currentColor" aria-hidden="true">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+        </svg>
+        <span className="text-[12px] font-semibold text-amber-700 dark:text-amber-400 leading-4">
+          Readers added context
+        </span>
+      </div>
+      <p className="text-[13px] leading-[18px] text-amber-900 dark:text-amber-200 whitespace-pre-wrap break-words">
+        {note.text}
+      </p>
+      {note.url && (
+        <a
+          href={note.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1.5 inline-block text-[12px] text-amber-700 dark:text-amber-400 hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Learn more ↗
+        </a>
+      )}
+    </div>
+  )
+}
+
 interface PostCardProps {
   authorName: string
   authorUsername: string
@@ -144,6 +179,7 @@ interface PostCardProps {
   category?: string
   quotedPost?: QuotedPostData
   linkCard?: LinkCardData
+  communityNote?: CommunityNoteData | null
   onMediaOpen?: (items: MediaItem[], index: number) => void
 }
 
@@ -165,6 +201,7 @@ export function PostCard({
   createdAt,
   quotedPost,
   linkCard,
+  communityNote,
   onMediaOpen,
 }: PostCardProps) {
   const [textExpanded, setTextExpanded] = useState(false)
@@ -294,6 +331,7 @@ export function PostCard({
         )}
 
         {quotedPost && <QuotedPost post={quotedPost} />}
+        {communityNote && communityNote.text && <CommunityNote note={communityNote} />}
         {threadExpanded && thread_posts && thread_posts.length > 0 && (
           <div className="mt-2 space-y-1 border-l-2 border-border pl-3">
             {thread_posts.map((threadPost, index) => (
