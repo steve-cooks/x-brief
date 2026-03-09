@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useMemo, useState } from "react"
 import { RichText, parsePostText } from "@/components/x-brief/rich-text"
 import { MediaGrid, type MediaItem, proxyUrl } from "@/components/x-brief/media-grid"
-import { EnrichedLinkCard, type LinkCardData, SimpleLinkCard } from "@/components/x-brief/link-card"
+import { ArticleCard, ArticleReaderModal, EnrichedLinkCard, type LinkCardData, SimpleLinkCard } from "@/components/x-brief/link-card"
 import { MetricsBar, type PostMetrics } from "@/components/x-brief/metrics-bar"
 
 function formatTimestamp(createdAt?: string, fallback?: string): string {
@@ -169,6 +169,7 @@ export function PostCard({
 }: PostCardProps) {
   const [textExpanded, setTextExpanded] = useState(false)
   const [threadExpanded, setThreadExpanded] = useState(false)
+  const [articleReaderOpen, setArticleReaderOpen] = useState(false)
 
   const isLongText = text.length > TRUNCATE_LENGTH
   const displayText = !textExpanded && isLongText ? text.slice(0, TRUNCATE_LENGTH) + "…" : text
@@ -266,9 +267,32 @@ export function PostCard({
         </div>
 
         {hasMedia && <MediaGrid media={media!} onImageClick={handleImageClick} onMediaOpen={onMediaOpen} />}
-        {hasLinkCard && <EnrichedLinkCard card={linkCard!} />}
-        {firstUrl && !hasLinkCard && <SimpleLinkCard url={firstUrl} />}
-        {is_article && article_url && !hasLinkCard && <SimpleLinkCard url={article_url} />}
+
+        {/* Article posts get a rich card that opens the in-app reader */}
+        {is_article ? (
+          <>
+            <ArticleCard
+              card={linkCard ?? null}
+              articleUrl={article_url}
+              authorName={authorName}
+              authorUsername={authorUsername}
+              onOpen={() => setArticleReaderOpen(true)}
+            />
+            {articleReaderOpen && (
+              <ArticleReaderModal
+                url={linkCard?.url || article_url || postUrl || ""}
+                title={linkCard?.title}
+                onClose={() => setArticleReaderOpen(false)}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {hasLinkCard && <EnrichedLinkCard card={linkCard!} />}
+            {firstUrl && !hasLinkCard && <SimpleLinkCard url={firstUrl} />}
+          </>
+        )}
+
         {quotedPost && <QuotedPost post={quotedPost} />}
         {threadExpanded && thread_posts && thread_posts.length > 0 && (
           <div className="mt-2 space-y-1 border-l-2 border-border pl-3">
