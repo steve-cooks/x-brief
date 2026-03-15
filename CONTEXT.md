@@ -1,5 +1,7 @@
 # X Brief Context
 
+> **Maintenance rule for any agent working here:** If your work changes product behavior, architecture, commands, env/config expectations, workflows, data flow, operational behavior, or other durable project facts, update this file before finishing. Keep it lean: preserve durable truths and delete stale material; do not dump transient task notes, logs, or implementation trivia here.
+
 ## Product intent
 
 X Brief helps users avoid doomscrolling by turning noisy X timelines into a short, high-signal briefing.
