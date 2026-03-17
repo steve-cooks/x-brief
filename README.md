@@ -15,7 +15,8 @@ The goal is simple:
 - close the app and move on with your day.
 
 ![X Brief dark mode](docs/images/screenshot.jpg)
-![X Brief light mode](docs/images/screenshot-light-foryou.jpg)
+
+![X Brief light mode — For You tab](docs/images/screenshot-light-foryou.jpg)
 
 ---
 
