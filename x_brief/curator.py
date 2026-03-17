@@ -94,6 +94,53 @@ STOPWORDS = {
     "new", "how", "why", "what", "when", "than", "then", "over", "under", "out", "all", "any", "more", "most", "very",
 }
 
+TLDR_CATEGORY_ALIASES = {
+    "AI & Tech": "AI",
+    "Crypto & Web3": "crypto",
+    "Startups & Business": "startups",
+    "Design & UI": "design",
+    "Sports": "sports",
+    "Self-Improvement": "self-improvement",
+    "Creator Economy": "the creator economy",
+}
+
+TLDR_BLOCKLIST = STOPWORDS | {
+    "amp",
+    "app",
+    "article",
+    "breaking",
+    "check",
+    "content",
+    "day",
+    "days",
+    "everyone",
+    "feed",
+    "good",
+    "great",
+    "here",
+    "latest",
+    "look",
+    "mostly",
+    "news",
+    "nothing",
+    "people",
+    "post",
+    "posts",
+    "read",
+    "scan",
+    "story",
+    "stuff",
+    "thread",
+    "threads",
+    "timeline",
+    "today",
+    "tweet",
+    "tweets",
+    "viral",
+    "week",
+    "weeks",
+}
+
 
 def clean_summary(text: str, max_len: int = 120) -> str:
     """Extract a clean summary from post text."""
@@ -257,6 +304,280 @@ def _topic_diverse_ranked(posts: list[Post], scores: dict[str, float]) -> list[P
     return sorted(winners, key=lambda p: scores.get(p.id, 0.0), reverse=True)
 
 
+def _topic_labels_for_post(post: Post) -> list[str]:
+    text = (post.text or "").lower()
+    labels: list[str] = []
+
+    for category, keywords in INTEREST_KEYWORDS.items():
+        for keyword in keywords:
+            normalized = keyword.lower().strip()
+            if not normalized:
+                continue
+            if len(normalized) <= 3 and normalized.isalpha():
+                matched = re.search(rf"\b{re.escape(normalized)}\b", text)
+            else:
+                matched = normalized in text
+            if matched:
+                labels.append(TLDR_CATEGORY_ALIASES.get(category, category.lower()))
+                break
+
+    for hashtag in re.findall(r"#(\w+)", text):
+        if hashtag and hashtag not in TLDR_BLOCKLIST:
+            labels.append(f"#{hashtag}")
+
+    for mention in re.findall(r"@(\w+)", text):
+        if mention and mention not in TLDR_BLOCKLIST:
+            labels.append(f"@{mention}")
+
+    words = re.findall(r"[a-zA-Z][a-zA-Z0-9']{3,}", text)
+    for word in words:
+        normalized = word.strip("'").lower()
+        if normalized and normalized not in TLDR_BLOCKLIST and not normalized.startswith("http"):
+            labels.append(normalized)
+
+    unique_labels: list[str] = []
+    seen: set[str] = set()
+    for label in labels:
+        if label in seen:
+            continue
+        seen.add(label)
+        unique_labels.append(label)
+        if len(unique_labels) >= 5:
+            break
+
+    return unique_labels
+
+
+def _join_tldr_topics(topics: list[str]) -> str:
+    if not topics:
+        return "whatever the timeline is doing"
+    if len(topics) == 1:
+        return topics[0]
+    return f"{topics[0]} and {topics[1]}"
+
+
+_EMOJI_RE = re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]+")
+_TLDR_TRIM_PREFIXES = (
+    "new:",
+    "breaking:",
+    "update:",
+    "thread:",
+    "psa:",
+    "note:",
+)
+_TLDR_ANNOUNCEMENT_WORDS = (
+    "announce",
+    "announced",
+    "announcing",
+    "launch",
+    "launched",
+    "launching",
+    "release",
+    "released",
+    "rolling out",
+    "rolled out",
+    "ship",
+    "shipped",
+    "drop",
+    "dropped",
+    "open source",
+    "open-sourced",
+    "double",
+    "doubled",
+    "delay",
+    "delayed",
+    "raise",
+    "raised",
+)
+_TLDR_DEBATE_WORDS = (
+    "arguing",
+    "debate",
+    "discourse",
+    "fighting",
+    "mad about",
+    "whether",
+    "vs",
+)
+_TLDR_OPINION_WORDS = (
+    "i think",
+    "i believe",
+    "hot take",
+    "unpopular opinion",
+    "opinion",
+    "take:",
+)
+
+
+def _tldr_author_label(post: Post) -> str:
+    author_name = (post.author_name or "").replace(" (pinned)", "").strip()
+    if author_name:
+        return author_name
+
+    username = (post.author_username or "").replace(" (pinned)", "").strip().lstrip("@")
+    if username:
+        return f"@{username}"
+
+    return "Someone"
+
+
+def _clean_tldr_source_text(text: str) -> str:
+    cleaned = clean_summary(text, max_len=180)
+    cleaned = _EMOJI_RE.sub("", cleaned)
+    cleaned = re.sub(r"^(@\w+\s+)+", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" -,:;.!?\"'")
+
+    for prefix in _TLDR_TRIM_PREFIXES:
+        if cleaned.lower().startswith(prefix):
+            cleaned = cleaned[len(prefix):].strip(" -,:;")
+            break
+
+    return cleaned
+
+
+def _first_meaningful_clause(text: str, max_len: int = 60) -> str:
+    if not text or text == "(media post)":
+        return ""
+
+    sentence = re.split(r"[.!?]", text, maxsplit=1)[0].strip()
+    clause = sentence
+
+    for separator in (",", ";", " - ", " — ", ": "):
+        index = clause.find(separator)
+        if 0 < index <= max_len:
+            clause = clause[:index].strip()
+            break
+
+    if len(clause) > max_len:
+        clause = clause[:max_len].rsplit(" ", 1)[0].strip()
+
+    return clause.strip(" -,:;.!?\"'")
+
+
+def _rewrite_lead_clause(author: str, post: Post) -> str:
+    clause = _first_meaningful_clause(_clean_tldr_source_text(post.text))
+    if not clause:
+        return ""
+
+    lower_clause = clause.lower()
+    author_variants = {
+        author.lower(),
+        author.lower().lstrip("@"),
+        f"@{post.author_username.lower().lstrip('@')}",
+        post.author_username.lower().lstrip("@"),
+    }
+    for variant in sorted((v for v in author_variants if v), key=len, reverse=True):
+        if lower_clause.startswith(f"{variant} "):
+            clause = clause[len(variant):].strip(" -,:;")
+            lower_clause = clause.lower()
+            break
+
+    rewrites = (
+        (r"^announcing\s+", "announced "),
+        (r"^introducing\s+", "introduced "),
+        (r"^launching\s+", "launched "),
+        (r"^dropping\s+", "dropped "),
+        (r"^shipping\s+", "shipped "),
+        (r"^rolling out\s+", "rolled out "),
+        (r"^doubling\s+", "doubled "),
+        (r"^delaying\s+", "delayed "),
+    )
+    for pattern, replacement in rewrites:
+        updated = re.sub(pattern, replacement, clause, count=1, flags=re.IGNORECASE)
+        if updated != clause:
+            clause = updated
+            lower_clause = clause.lower()
+            break
+
+    if lower_clause.startswith("i think "):
+        rest = clause[len("i think "):].strip()
+        return f"{author} says {rest}" if rest else f"{author} says something worth a look"
+
+    if lower_clause.startswith("i believe "):
+        rest = clause[len("i believe "):].strip()
+        return f"{author} says {rest}" if rest else f"{author} says something worth a look"
+
+    if lower_clause.startswith("i "):
+        rest = clause[2:].strip()
+        return f"{author} says they {rest}" if rest else f"{author} says something worth a look"
+
+    if lower_clause.startswith(("we ", "we're ", "we are ", "our ")):
+        return f"{author} says {clause}"
+
+    return f"{author} {clause}"
+
+
+def _classify_tldr_fragment(fragment: str) -> str:
+    lower = fragment.lower()
+    if any(word in lower for word in _TLDR_DEBATE_WORDS) or "?" in fragment:
+        return "debate"
+    if any(word in lower for word in _TLDR_OPINION_WORDS):
+        return "opinion"
+    if any(word in lower for word in _TLDR_ANNOUNCEMENT_WORDS):
+        return "announcement"
+    return "neutral"
+
+
+def _rank_tldr_items(
+    cant_miss_items: list[BriefingItem],
+    for_you_items: list[BriefingItem],
+    following_items: list[BriefingItem],
+) -> list[BriefingItem]:
+    ranked: list[tuple[int, float, BriefingItem]] = []
+    for priority, items in enumerate((cant_miss_items, for_you_items, following_items)):
+        for item in items:
+            ranked.append((priority, item.score, item))
+
+    return [item for _, _, item in sorted(ranked, key=lambda row: (row[0], -row[1]))]
+
+
+def _join_tldr_fragments(fragments: list[str]) -> str:
+    if not fragments:
+        return "Slow day - not much worth recapping."
+
+    if len(fragments) == 1:
+        return f"Slow day - {fragments[0]}."
+
+    if len(fragments) < 3:
+        return f"Slow day - {fragments[0]} and {fragments[1]}."
+
+    third_kind = _classify_tldr_fragment(fragments[2])
+    if third_kind == "debate":
+        return f"{fragments[0]}, {fragments[1]}, while {fragments[2]}."
+
+    second_kind = _classify_tldr_fragment(fragments[1])
+    if second_kind == "debate":
+        return f"{fragments[0]}, while {fragments[1]}, and {fragments[2]}."
+
+    return f"{fragments[0]}, {fragments[1]}, and {fragments[2]}."
+
+
+def _build_tldr(
+    cant_miss_items: list[BriefingItem],
+    for_you_items: list[BriefingItem],
+    following_items: list[BriefingItem],
+) -> str:
+    ranked_items = _rank_tldr_items(cant_miss_items, for_you_items, following_items)
+
+    fragments: list[str] = []
+    seen_fragments: set[str] = set()
+    for item in ranked_items:
+        author = _tldr_author_label(item.post)
+        fragment = _rewrite_lead_clause(author, item.post)
+        if not fragment:
+            continue
+
+        normalized = fragment.lower()
+        if normalized in seen_fragments:
+            continue
+
+        seen_fragments.add(normalized)
+        fragments.append(fragment)
+        if len(fragments) >= 3:
+            break
+
+    return _join_tldr_fragments(fragments)
+
+
 def curate_briefing(
     posts: list[Post],
     users: dict[str, User],
@@ -383,4 +704,5 @@ def curate_briefing(
             "interests_detected": len(interests),
             "breakout_posts": 0,
         },
+        tldr=_build_tldr(cant_miss_items, for_you_items, following_items),
     )

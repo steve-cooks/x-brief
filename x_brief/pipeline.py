@@ -315,6 +315,7 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
         "period_hours": hours,
         "sections": sections,
         "stats": briefing.stats,
+        "tldr": briefing.tldr,
     }
 
 

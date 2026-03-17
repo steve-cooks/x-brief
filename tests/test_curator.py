@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from x_brief.curator import cluster_posts_by_topic, curate_briefing, extract_topic_tokens
-from x_brief.models import Post, PostMetrics, ThreadPost, User
+from x_brief.curator import _build_tldr, cluster_posts_by_topic, curate_briefing, extract_topic_tokens
+from x_brief.models import BriefingItem, Post, PostMetrics, ThreadPost, User
 
 
 def make_post(
@@ -232,3 +232,105 @@ def test_reemergent_posts_only_allowed_in_cant_miss() -> None:
     assert {i.post.id for i in briefing.sections[0].items} == {"reemerge"}
     assert briefing.sections[1].items == []
     assert briefing.sections[2].items == []
+
+
+def test_build_tldr_uses_real_post_phrases_with_section_priority() -> None:
+    cant_miss = [
+        BriefingItem(
+            post=make_post(
+                "cm-1",
+                "karpathy",
+                "@ycombinator 🚨 Announcing forkable agentic orgs for teams building with AI all weekend. Long post with examples.",
+                likes=25_000,
+                reposts=4_000,
+                replies=1_500,
+                views=2_000_000,
+            ),
+            summary="",
+            category="Can't Miss",
+            score=99.0,
+        )
+    ]
+    for_you = [
+        BriefingItem(
+            post=make_post(
+                "fy-1",
+                "anthropic",
+                "Doubling Claude usage limits for the weekend, more room to test long prompts.",
+                likes=2_000,
+                reposts=300,
+                replies=200,
+                views=200_000,
+                source="for_you",
+            ),
+            summary="",
+            category="For You",
+            score=80.0,
+        ),
+        BriefingItem(
+            post=make_post(
+                "fy-2",
+                "builder",
+                "I think vibe coding is real engineering and the discourse is getting tired.",
+                likes=1_500,
+                reposts=120,
+                replies=300,
+                views=150_000,
+                source="for_you",
+            ),
+            summary="",
+            category="For You",
+            score=79.0,
+        ),
+    ]
+    following = [
+        BriefingItem(
+            post=make_post(
+                "follow-1",
+                "meta",
+                "Delayed the new model launch again after more eval work.",
+                likes=5_000,
+                reposts=800,
+                replies=500,
+                views=500_000,
+                source="following",
+            ),
+            summary="",
+            category="Following",
+            score=500.0,
+        )
+    ]
+
+    tldr = _build_tldr(cant_miss, for_you, following)
+
+    assert "karpathy announced forkable agentic orgs" in tldr.lower()
+    assert "anthropic doubled claude usage limits for the weekend" in tldr.lower()
+    assert "builder says vibe coding is real engineering" in tldr.lower()
+    assert "meta delayed the new model launch again" not in tldr.lower()
+
+
+def test_build_tldr_returns_slow_day_for_single_good_post() -> None:
+    tldr = _build_tldr(
+        [],
+        [
+            BriefingItem(
+                post=make_post(
+                    "fy-quiet",
+                    "openclawkid",
+                    "@friend I made $30K with OpenClaw in two weeks by selling automations.",
+                    likes=400,
+                    reposts=50,
+                    replies=40,
+                    views=20_000,
+                    source="for_you",
+                ),
+                summary="",
+                category="For You",
+                score=42.0,
+            )
+        ],
+        [],
+    )
+
+    assert tldr.startswith("Slow day - ")
+    assert "openclawkid says they made $30k with openclaw" in tldr.lower()

@@ -67,6 +67,7 @@ interface Post {
 interface BriefingData {
   generated_at: string
   period_hours: number
+  tldr?: string
   sections: Array<{
     title: string
     emoji: string
@@ -80,11 +81,26 @@ interface BriefingData {
   }
 }
 
+interface AvailableTab {
+  label: string
+  id: string
+  kind: "posts" | "tldr"
+  posts: Post[]
+  count: number
+  totalCount: number
+  emptyMessage: string
+}
+
+interface RefreshFeedback {
+  type: "success" | "error"
+  text: string
+}
+
 const SECTION_DISPLAY: Record<string, { label: string; id: string; emptyMessage: string }> = {
   "Can't Miss 🔥": {
-    label: "Can't Miss 🔥",
-    id: "cant_miss",
-    emptyMessage: "Nothing major happened. Go live your life. ✌️",
+    label: "TL;DR",
+    id: "tldr",
+    emptyMessage: "Waiting for next scan...",
   },
   "For You 📌": {
     label: "For You",
@@ -98,7 +114,7 @@ const SECTION_DISPLAY: Record<string, { label: string; id: string; emptyMessage:
   },
 }
 
-const TAB_ORDER = ["cant_miss", "for_you", "following"]
+const TAB_ORDER = ["tldr", "for_you", "following"]
 
 function formatStat(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -163,6 +179,7 @@ export function BriefingView() {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshFeedback, setRefreshFeedback] = useState<RefreshFeedback | null>(null)
   const [minutesAgo, setMinutesAgo] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<string>("")
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
@@ -174,6 +191,7 @@ export function BriefingView() {
   } | null>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const pendingReadRef = useRef<Set<string>>(new Set())
+  const refreshFeedbackTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -254,25 +272,39 @@ export function BriefingView() {
     return () => observerRef.current?.disconnect()
   }, [])
 
-  const fetchBriefing = useCallback(
-    async (showRefreshing = false) => {
-      if (showRefreshing) setRefreshing(true)
-      try {
-        const response = await fetch("/api/briefing")
-        const data = await response.json()
-        if (!briefing || data.generated_at !== briefing.generated_at) {
-          setBriefing(data)
-        }
-        setLoading(false)
-      } catch (error) {
-        console.error("Failed to fetch briefing:", error)
-        setLoading(false)
-      } finally {
-        if (showRefreshing) setRefreshing(false)
+  const showRefreshFeedback = useCallback((type: RefreshFeedback["type"], text: string) => {
+    if (refreshFeedbackTimeoutRef.current) {
+      window.clearTimeout(refreshFeedbackTimeoutRef.current)
+    }
+
+    setRefreshFeedback({ type, text })
+    refreshFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setRefreshFeedback(null)
+      refreshFeedbackTimeoutRef.current = null
+    }, type === "error" ? 4000 : 2500)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (refreshFeedbackTimeoutRef.current) {
+        window.clearTimeout(refreshFeedbackTimeoutRef.current)
       }
-    },
-    [briefing]
-  )
+    }
+  }, [])
+
+  const fetchBriefing = useCallback(async () => {
+    try {
+      const response = await fetch("/api/briefing")
+      const data = await response.json()
+      if (!briefing || data.generated_at !== briefing.generated_at) {
+        setBriefing(data)
+      }
+      setLoading(false)
+    } catch (error) {
+      console.error("Failed to fetch briefing:", error)
+      setLoading(false)
+    }
+  }, [briefing])
 
   useEffect(() => {
     void fetchBriefing()
@@ -284,6 +316,12 @@ export function BriefingView() {
     }, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchBriefing])
+
+  useEffect(() => {
+    if (activeTab !== "tldr") return
+    setSearchExpanded(false)
+    setSearchQuery("")
+  }, [activeTab])
 
   useEffect(() => {
     if (!briefing?.generated_at) return
@@ -309,12 +347,22 @@ export function BriefingView() {
   )
 
   const availableTabs = useMemo(() => {
-    if (!briefing) return [] as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number; emptyMessage: string }>
+    if (!briefing) return [] as AvailableTab[]
 
     const dynamicTabs = briefing.sections
       .map((s) => {
         const display = SECTION_DISPLAY[s.title]
         if (!display) return null
+
+        if (display.id === "tldr") {
+          return {
+            ...display,
+            kind: "tldr" as const,
+            posts: [],
+            count: briefing.tldr ? 1 : 0,
+            totalCount: s.posts.length,
+          }
+        }
 
         const unread = s.posts.filter((p) => {
           const id = postIdFromUrl(p.postUrl)
@@ -326,12 +374,13 @@ export function BriefingView() {
 
         return {
           ...display,
+          kind: "posts" as const,
           posts: postsToShow,
           count: postsToShow.length,
           totalCount: s.posts.length,
         }
       })
-      .filter(Boolean) as Array<{ label: string; id: string; posts: Post[]; count: number; totalCount: number; emptyMessage: string }>
+      .filter(Boolean) as AvailableTab[]
 
     return dynamicTabs.sort((a, b) => {
       const ai = TAB_ORDER.indexOf(a.id)
@@ -354,6 +403,38 @@ export function BriefingView() {
     trackEvent("tab_switch", { tab })
   }, [])
 
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return
+
+    setRefreshing(true)
+    try {
+      const response = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      const payload = (await response.json().catch(() => null)) as { error?: string; details?: unknown } | null
+
+      if (!response.ok) {
+        const detailText =
+          typeof payload?.details === "string"
+            ? payload.details
+            : typeof payload?.error === "string"
+              ? payload.error
+              : "Failed to trigger scan."
+        throw new Error(detailText)
+      }
+
+      showRefreshFeedback("success", "Scan triggered!")
+      await fetchBriefing()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to trigger scan."
+      showRefreshFeedback("error", message)
+    } finally {
+      setRefreshing(false)
+    }
+  }, [fetchBriefing, refreshing, showRefreshFeedback])
+
   const swipeRef = useSwipeTabs({
     tabIds,
     activeTab,
@@ -373,7 +454,11 @@ export function BriefingView() {
           ? `${Math.floor(minutesAgo / 60)}h ago`
           : `${Math.floor(minutesAgo / 1440)}d ago`
 
-  const totalPosts = briefing?.sections.reduce((sum, section) => sum + section.posts.length, 0) ?? 0
+  const totalPosts =
+    briefing?.sections.reduce((sum, section) => {
+      const sectionId = SECTION_DISPLAY[section.title]?.id
+      return sum + (sectionId === "tldr" ? 0 : section.posts.length)
+    }, 0) ?? 0
   const readMinutes = Math.ceil(totalPosts / 2)
 
   return (
@@ -404,7 +489,7 @@ export function BriefingView() {
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {briefing && (
                 <button
-                  onClick={() => void fetchBriefing(true)}
+                  onClick={() => void handleRefresh()}
                   disabled={refreshing}
                   aria-label="Refresh briefing"
                   className="flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors disabled:opacity-50"
@@ -417,6 +502,20 @@ export function BriefingView() {
           </div>
         </div>
       </header>
+
+      {refreshFeedback && (
+        <div className="fixed top-16 sm:top-[70px] left-1/2 z-[60] -translate-x-1/2 pointer-events-none px-4">
+          <div
+            className={`rounded-full px-4 py-2 text-sm font-semibold shadow-lg border backdrop-blur-md ${
+              refreshFeedback.type === "success"
+                ? "border-[#1d9bf0]/20 bg-[#1d9bf0]/12 text-[#1d9bf0]"
+                : "border-red-500/20 bg-red-500/12 text-red-600 dark:text-red-300"
+            }`}
+          >
+            {refreshFeedback.text}
+          </div>
+        </div>
+      )}
 
       {loading && <LoadingSkeleton />}
 
@@ -437,51 +536,53 @@ export function BriefingView() {
                       </TabsTrigger>
                     ))}
                   </TabsList>
-                  <div className="flex-shrink-0 px-2">
-                    {!searchExpanded ? (
-                      <button
-                        type="button"
-                        onClick={() => setSearchExpanded(true)}
-                        className="h-8 w-8 rounded-full border border-border text-muted-foreground hover:text-[#1d9bf0] hover:border-[#1d9bf0]/40 transition-colors flex items-center justify-center"
-                        aria-label="Search posts"
-                      >
-                        <Search className="h-4 w-4" />
-                      </button>
-                  ) : (
-                    <div className="flex items-center gap-2 w-full">
-                      <div className="relative flex-1">
-                        <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search posts or @username"
-                          className="w-full h-9 rounded-full border border-border bg-background pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-[#1d9bf0]/40"
-                        />
-                        {searchQuery && (
+                  {activeTab !== "tldr" && (
+                    <div className="flex-shrink-0 px-2">
+                      {!searchExpanded ? (
+                        <button
+                          type="button"
+                          onClick={() => setSearchExpanded(true)}
+                          className="h-8 w-8 rounded-full border border-border text-muted-foreground hover:text-[#1d9bf0] hover:border-[#1d9bf0]/40 transition-colors flex items-center justify-center"
+                          aria-label="Search posts"
+                        >
+                          <Search className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2 w-full">
+                          <div className="relative flex-1">
+                            <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              placeholder="Search posts or @username"
+                              className="w-full h-9 rounded-full border border-border bg-background pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-[#1d9bf0]/40"
+                            />
+                            {searchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setSearchQuery("")}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                aria-label="Clear search"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                           <button
                             type="button"
-                            onClick={() => setSearchQuery("")}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            aria-label="Clear search"
+                            onClick={() => {
+                              setSearchExpanded(false)
+                              setSearchQuery("")
+                            }}
+                            className="text-xs text-muted-foreground hover:text-foreground"
                           >
-                            <X className="h-4 w-4" />
+                            Cancel
                           </button>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchExpanded(false)
-                          setSearchQuery("")
-                        }}
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Cancel
-                      </button>
+                        </div>
+                      )}
                     </div>
                   )}
-                  </div>
                 </div>
               </div>
             </div>
@@ -500,7 +601,13 @@ export function BriefingView() {
                   value={tab.id}
                   className="mt-0 focus-visible:outline-none focus-visible:ring-0 animate-fade-in"
                 >
-                  {tab.posts.length === 0 ? (
+                  {tab.kind === "tldr" ? (
+                    <div className="min-h-[calc(100vh-220px)] px-6 flex items-center justify-center text-center">
+                      <p className="max-w-[32rem] text-[28px] leading-[1.15] font-black tracking-tight text-foreground">
+                        {briefing.tldr || "Waiting for next scan..."}
+                      </p>
+                    </div>
+                  ) : tab.posts.length === 0 ? (
                     <div className="px-4 py-10 text-center text-sm text-muted-foreground">
                       {normalizedSearch ? "No posts match your search." : tab.emptyMessage}
                     </div>

@@ -103,6 +103,7 @@ class Briefing(BaseModel):
     period_end: datetime
     sections: list[BriefingSection] = Field(default_factory=list)
     stats: dict = Field(default_factory=dict)
+    tldr: Optional[str] = None
 
 
 class UserConfig(BaseModel):
