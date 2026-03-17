@@ -425,8 +425,9 @@ export function BriefingView() {
         throw new Error(detailText)
       }
 
-      showRefreshFeedback("success", "Scan triggered!")
+      showRefreshFeedback("success", "Scan triggered! Data will refresh in a few minutes.")
       await fetchBriefing()
+      setTimeout(() => void fetchBriefing(), 30000)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to trigger scan."
       showRefreshFeedback("error", message)
