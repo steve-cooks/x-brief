@@ -16,7 +16,7 @@ export async function POST() {
   try {
     // Check cooldown
     try {
-      const statusPath = path.join(process.cwd(), "data/pipeline-status.json")
+      const statusPath = path.resolve(process.cwd(), "..", "data/pipeline-status.json")
       const raw = await readFile(statusPath, "utf-8")
       const status = JSON.parse(raw)
       if (status.last_success) {
