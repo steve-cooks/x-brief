@@ -313,6 +313,7 @@ export function PostCard({
               articleUrl={article_url}
               authorName={authorName}
               authorUsername={authorUsername}
+              postText={text}
               onOpen={() => setArticleReaderOpen(true)}
             />
             {articleReaderOpen && (

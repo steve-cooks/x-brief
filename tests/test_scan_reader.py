@@ -299,6 +299,33 @@ def test_load_scan_posts_detects_article_from_bare_text_url(tmp_path: Path) -> N
     assert post.article_url == "https://x.com/writer/article/abc123"
 
 
+def test_load_scan_posts_detects_article_from_i_article_url_in_text(tmp_path: Path) -> None:
+    """Real X article URLs use /i/article/ pattern — detect from post text."""
+    scan_dir = tmp_path / "timeline_scans"
+    scan_time = datetime.now(timezone.utc).replace(microsecond=0)
+
+    write_scan_file(
+        scan_dir,
+        "2026-03-08-11.json",
+        scan_time=scan_time,
+        posts=[
+            make_scan_post(
+                "960",
+                "@writer",
+                text="My latest thoughts http://x.com/i/article/2033772621536591872",
+                posted_at="10m ago",
+                url="https://x.com/writer/status/960",
+            )
+        ],
+    )
+
+    posts, _ = load_scan_posts(str(scan_dir), hours=24)
+    post = posts[0]
+
+    assert post.is_article is True
+    assert post.article_url == "http://x.com/i/article/2033772621536591872"
+
+
 def test_load_scan_posts_skips_invalid_json_and_continues(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     scan_dir = tmp_path / "timeline_scans"
     scan_dir.mkdir(parents=True)

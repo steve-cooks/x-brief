@@ -80,6 +80,8 @@ export interface ArticleCardProps {
   /** Author of the post (shown as article author fallback) */
   authorName?: string
   authorUsername?: string
+  /** Post text — used to derive a fallback title when card has none */
+  postText?: string
   /** Called when user taps the card — opens in-app reader */
   onOpen: () => void
 }
@@ -93,9 +95,22 @@ export function ArticleCard({
   articleUrl,
   authorName,
   authorUsername,
+  postText,
   onOpen,
 }: ArticleCardProps) {
-  const title = card?.title || ""
+  const rawTitle = card?.title || ""
+  const fallbackTitle = (() => {
+    if (rawTitle) return rawTitle
+    // Try to extract a title from post text (strip the article URL itself)
+    if (postText) {
+      const cleaned = postText.replace(/(?:https?:\/\/)?(?:www\.)?(?:x|twitter)\.com\/\S+/gi, "").trim()
+      if (cleaned) return cleaned
+    }
+    if (authorUsername) return `Article by @${authorUsername}`
+    if (authorName) return `Article by ${authorName}`
+    return "Article"
+  })()
+  const title = fallbackTitle
   const description = card?.description || ""
   const thumbnail = card?.thumbnail
   const domain = card?.domain || (articleUrl ? (() => {
@@ -134,11 +149,9 @@ export function ArticleCard({
         </div>
 
         {/* Title */}
-        {title && (
-          <div className="text-[16px] font-bold text-foreground leading-[1.3] line-clamp-3">
-            {title}
-          </div>
-        )}
+        <div className="text-[16px] font-bold text-foreground leading-[1.3] line-clamp-3">
+          {title}
+        </div>
 
         {/* Description / subtitle */}
         {description && (

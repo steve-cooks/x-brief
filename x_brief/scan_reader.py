@@ -242,8 +242,8 @@ def extract_urls_from_text(text: str) -> list[str]:
     return cleaned
 
 
-def detect_article_url(post_url: str, urls: list[str]) -> Optional[str]:
-    """Find first X article URL in post or linked URLs."""
+def detect_article_url(post_url: str, urls: list[str], text: str = "") -> Optional[str]:
+    """Find first X article URL in post URL, linked URLs, or raw post text."""
     candidates = [post_url, *urls]
     for candidate in candidates:
         if not candidate:
@@ -255,6 +255,14 @@ def detect_article_url(post_url: str, urls: list[str]) -> Optional[str]:
         if matched_url.startswith("http://") or matched_url.startswith("https://"):
             return matched_url
         return f"https://{matched_url}"
+    # Fall back to scanning the raw post text directly
+    if text:
+        match = ARTICLE_URL_RE.search(text)
+        if match:
+            matched_url = match.group(0)
+            if matched_url.startswith("http://") or matched_url.startswith("https://"):
+                return matched_url
+            return f"https://{matched_url}"
     return None
 
 
@@ -524,7 +532,7 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         parsed_time = parse_posted_at(posted_at_str, scan_time) or scan_time
 
         source = normalize_source(post_data.get('source'))
-        article_url = detect_article_url(url, urls)
+        article_url = detect_article_url(url, urls, text)
         is_article = article_url is not None
 
         raw_conversation_id = (
