@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+keywords = ["x", "twitter", "briefing", "ai", "news", "curation", "timeline"]
 dependencies = [
     "httpx>=0.27.0",
     "sqlite-utils>=3.35",
@@ -27,6 +28,11 @@ dependencies = [
     "click>=8.1.0",
     "jinja2>=3.1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/steve-cooks/x-brief"
+Repository = "https://github.com/steve-cooks/x-brief"
+Issues = "https://github.com/steve-cooks/x-brief/issues"
 
 [project.optional-dependencies]
 dev = [

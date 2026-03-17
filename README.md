@@ -1,5 +1,9 @@
 # X Brief
 
+[![CI](https://github.com/steve-cooks/x-brief/actions/workflows/test.yml/badge.svg)](https://github.com/steve-cooks/x-brief/actions/workflows/test.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 > Replace 2 hours of compulsive scrolling with a 5-minute brief.
 
 X Brief is an **anti-scrolling-addiction tool** for X/Twitter.

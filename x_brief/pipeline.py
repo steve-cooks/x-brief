@@ -11,6 +11,8 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+import click
+
 from x_brief.config import load_user_config
 from x_brief.curator import curate_briefing
 from x_brief.scan_reader import build_post_url, load_scan_posts, build_users_from_posts
@@ -127,7 +129,7 @@ async def run_briefing_from_scans(
             "last_attempt": last_attempt,
         }
         _write_pipeline_status(status_path, status_payload)
-        print(f"❌ Pipeline error: {error_message}")
+        click.echo(f"❌ Pipeline error: {error_message}")
         return error_message
 
     try:
@@ -144,21 +146,21 @@ async def run_briefing_from_scans(
             "AI", "Machine Learning", "LLMs", "Claude", "OpenAI", "Cursor",
             "OpenClaw", "Startups", "Building", "SaaS", "Design", "Trading bots",
         ]
-        print(f"📋 Config loaded. Interests: {', '.join(interests)}")
+        click.echo(f"📋 Config loaded. Interests: {', '.join(interests)}")
 
-        print(f"📂 Reading scans from {scan_dir} (last {hours}h)...")
+        click.echo(f"📂 Reading scans from {scan_dir} (last {hours}h)...")
         all_posts, scan_verified = load_scan_posts(scan_dir, hours=hours)
 
         if not all_posts:
             return fail_pipeline("No posts found in scan data.")
 
         if skip_dedup:
-            print("⏭️  Skipping dedup (web app mode)")
+            click.echo("⏭️  Skipping dedup (web app mode)")
             fresh_posts = all_posts
             history = None
             reemergent_post_ids: set[str] = set()
         else:
-            print("🔄 Checking brief history for duplicates...")
+            click.echo("🔄 Checking brief history for duplicates...")
             history = load_brief_history(history_path)
             fresh_posts, reemergent_post_ids = filter_already_briefed(all_posts, history, max_age_hours=hours)
 
@@ -166,9 +168,9 @@ async def run_briefing_from_scans(
                 return fail_pipeline("Zero posts after processing (all scanned posts already briefed).")
 
         users_map = build_users_from_posts(fresh_posts, scan_verified=scan_verified)
-        print(f"👥 Built {len(users_map)} user profiles from scan data")
+        click.echo(f"👥 Built {len(users_map)} user profiles from scan data")
 
-        print("🎯 Curating briefing...")
+        click.echo("🎯 Curating briefing...")
         briefing = curate_briefing(
             posts=fresh_posts,
             users=users_map,
@@ -183,18 +185,18 @@ async def run_briefing_from_scans(
             return fail_pipeline("Zero sections produced by curator.")
 
         output = format_markdown(briefing)
-        print(f"\n{'='*60}")
-        print(output)
-        print(f"{'='*60}")
+        click.echo(f"\n{'='*60}")
+        click.echo(output)
+        click.echo(f"{'='*60}")
 
         json_data = export_briefing_json(briefing, users_map, hours)
         json_path = str(data_dir / "latest-briefing.json")
         with open(json_path, "w") as f:
             json.dump(json_data, f, indent=2, default=str)
-        print(f"📄 JSON exported to {json_path}")
+        click.echo(f"📄 JSON exported to {json_path}")
 
         from x_brief.enrichment import enrich_with_syndication_async
-        print("🎨 Enriching with syndication API...")
+        click.echo("🎨 Enriching with syndication API...")
         await enrich_with_syndication_async(json_path)
 
         if not skip_dedup and history is not None:
@@ -333,10 +335,10 @@ def enrich_briefing_json(json_path: str) -> None:
         with open(json_path, "r") as f:
             data = json_mod.load(f)
     except FileNotFoundError:
-        print(f"⚠️ File not found: {json_path}")
+        click.echo(f"⚠️ File not found: {json_path}")
         return
     except json.JSONDecodeError:
-        print(f"⚠️ Invalid JSON in: {json_path}")
+        click.echo(f"⚠️ Invalid JSON in: {json_path}")
         return
 
     enriched_count = 0
@@ -361,7 +363,7 @@ def enrich_briefing_json(json_path: str) -> None:
     with open(json_path, "w") as f:
         json_mod.dump(data, f, indent=2, default=str)
 
-    print(f"✅ Enriched {enriched_count} posts with avatar URLs in {json_path}")
+    click.echo(f"✅ Enriched {enriched_count} posts with avatar URLs in {json_path}")
 
 
 def _relative_time(dt) -> str:

@@ -24,7 +24,7 @@ export async function GET() {
 /**
  * POST /api/analytics
  *
- * Accept client-side analytics dump and log to stdout (for now).
+ * Accept client-side analytics dump.
  * Can be extended to write to a file or database.
  */
 export async function POST(request: Request) {
@@ -37,8 +37,6 @@ export async function POST(request: Request) {
 
     const body = JSON.parse(rawBody)
     const events = Array.isArray(body) ? body : body.events || []
-    // Log to stdout for collection by systemd journal
-    console.log(`[analytics] Received ${events.length} events`)
     return NextResponse.json({ received: events.length })
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })

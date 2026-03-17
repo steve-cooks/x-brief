@@ -38,3 +38,5 @@ OPENSOURCE_*.md
 !docs/images/*.jpg
 !docs/images/*.png
 !web/public/
+SPEC-v2-curation.md
+CHANGES.md

@@ -12,6 +12,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
+import click
+
 from x_brief.models import Post, PostMetrics, PostMedia, QuotedPost, ThreadPost, User
 
 
@@ -566,7 +568,7 @@ def parse_scan_post(post_data: dict, scan_time: datetime) -> Optional[Post]:
         
         return post
     except Exception as e:
-        print(f"  ⚠️ Error parsing post: {e}")
+        click.echo(f"  ⚠️ Error parsing post: {e}")
         return None
 
 
@@ -586,7 +588,7 @@ def load_scan_posts(scan_dir: str, hours: int = 48) -> tuple[list[Post], dict[st
     """
     scan_path = Path(scan_dir).expanduser()
     if not scan_path.exists():
-        print(f"⚠️ Scan directory not found: {scan_path}")
+        click.echo(f"⚠️ Scan directory not found: {scan_path}")
         return [], {}
     
     cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -594,8 +596,8 @@ def load_scan_posts(scan_dir: str, hours: int = 48) -> tuple[list[Post], dict[st
     scan_verified: dict[str, bool] = {}  # Collect verification data
     scans_loaded = 0
     
-    print(f"📁 Loading scans from {scan_path}")
-    print(f"   Cutoff: {cutoff_time.isoformat()} ({hours}h ago)")
+    click.echo(f"📁 Loading scans from {scan_path}")
+    click.echo(f"   Cutoff: {cutoff_time.isoformat()} ({hours}h ago)")
     
     # Find all JSON files matching the pattern
     json_files = sorted(scan_path.glob("*.json"))
@@ -633,15 +635,15 @@ def load_scan_posts(scan_dir: str, hours: int = 48) -> tuple[list[Post], dict[st
                     if post and post.id not in posts_by_id:
                         posts_by_id[post.id] = post
         except json.JSONDecodeError as e:
-            print(f"⚠️ Skipping invalid JSON scan file {json_file.name}: {e}")
+            click.echo(f"⚠️ Skipping invalid JSON scan file {json_file.name}: {e}")
             continue
         except Exception as e:
-            print(f"⚠️ Skipping unreadable scan file {json_file.name}: {e}")
+            click.echo(f"⚠️ Skipping unreadable scan file {json_file.name}: {e}")
             continue
     
     posts = list(posts_by_id.values())
     annotate_threads(posts)
-    print(f"✅ Loaded {len(posts)} unique posts from {scans_loaded} scan files")
+    click.echo(f"✅ Loaded {len(posts)} unique posts from {scans_loaded} scan files")
     
     return posts, scan_verified
 
