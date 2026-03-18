@@ -370,7 +370,11 @@ async def enrich_with_syndication_async(json_path: str) -> None:
                 current_text = re.sub(r'\s*https://t\.co/\S+\s*$', '', current_text).strip()
                 post["text"] = current_text
 
-        if not post.get("media"):
+        existing_media = post.get("media") or []
+        media_needs_enrichment = not existing_media or all(
+            not m.get("url") for m in existing_media if isinstance(m, dict)
+        )
+        if media_needs_enrichment:
             media = _extract_media(tweet_data)
             if media:
                 post["media"] = media
