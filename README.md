@@ -224,9 +224,17 @@ An OpenClaw agent opens a real browser, logs into your X account, and scrolls th
 
 ### Setting up the cron job
 
-1. **Create an OpenClaw cron job** that runs every 4 hours:
-   - The cron prompt should instruct the agent to: open X, scroll the For You tab, scroll the Following tab, extract posts, save scan JSON to `timeline_scans/`, then run the pipeline
-   - Recommended schedule: `0 */4 * * *`
+1. **Create an OpenClaw cron job** that runs every 4 hours. Copy and paste this command:
+
+   ```bash
+   openclaw cron add \
+     --name "X Timeline Scan" \
+     --cron "0 */4 * * *" \
+     --agent rabbit \
+     --session isolated \
+     --announce \
+     --message "Scan the X timeline using the browser (profile='openclaw'). IMPORTANT: At the very start of every scan, navigate to x.com/home and do a HARD REFRESH (navigate away then back, or reload the page) to ensure X serves fresh content. After refreshing, scroll the For You and Following tabs, collect posts. Run the x-brief pipeline to score and curate them. After completing the scan and pipeline, write a TL;DR — one sentence that summarizes what is happening on the timeline right now. Write it like you are texting a friend: casual, opinionated, specific. Examples: 'OpenClaw is having a massive moment — steipete at Microsoft Build, Ollama shipped native support, and some dude used Claude to find 6K in landlord overcharges' or 'Slow day — just people arguing about vibe coding again.' Then save the TL;DR to the briefing JSON file at ~/projects/x-brief/data/latest-briefing.json by reading the file, updating the tldr field, and writing it back."
+   ```
 
 2. **Create a wrapper script** from the included template:
    ```bash
