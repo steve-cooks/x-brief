@@ -226,11 +226,11 @@ An OpenClaw agent opens a real browser, logs into your X account, and scrolls th
    - The cron prompt should instruct the agent to: open X, scroll the For You tab, scroll the Following tab, extract posts, save scan JSON to `timeline_scans/`, then run the pipeline
    - Recommended schedule: `0 */4 * * *`
 
-2. **Create a wrapper script** that triggers the cron job:
+2. **Create a wrapper script** from the included template:
    ```bash
-   #!/bin/bash
-   export OPENCLAW_GATEWAY_TOKEN="your-gateway-token"
-   openclaw cron run <your-cron-job-id>
+   cp scripts/trigger-scan.example.sh scripts/trigger-scan.sh
+   chmod +x scripts/trigger-scan.sh
+   # Edit scripts/trigger-scan.sh with your gateway token and cron job ID
    ```
 
 3. **Set environment variables** in `web/.env.local`:
