@@ -14,6 +14,8 @@ The goal is simple:
 - avoid dopamine-driven feed loops,
 - close the app and move on with your day.
 
+![X Brief TL;DR tab](docs/images/screenshot-tldr.jpg)
+
 ![X Brief dark mode](docs/images/screenshot.jpg)
 
 ![X Brief light mode — For You tab](docs/images/screenshot-light-foryou.jpg)
