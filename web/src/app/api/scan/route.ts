@@ -9,7 +9,6 @@ const execAsync = promisify(exec)
 
 export const dynamic = "force-dynamic"
 
-const OPENCLAW_CRON_JOB_ID = "3c6f01a1-7e41-4089-b11d-bd7508e9f6e6"
 const COOLDOWN_MINUTES = 15
 
 export async function POST() {
@@ -37,14 +36,20 @@ export async function POST() {
       // File missing or unreadable — proceed with scan
     }
 
-    const { stdout } = await execAsync(
-      `/home/cluvis/.local/bin/trigger-xbrief-scan.sh`
-    )
+    const scanCommand = process.env.XBRIEF_SCAN_COMMAND
+    if (!scanCommand) {
+      return NextResponse.json(
+        { error: "XBRIEF_SCAN_COMMAND is not configured." },
+        { status: 500 }
+      )
+    }
+
+    const { stdout } = await execAsync(scanCommand)
 
     return NextResponse.json({
       ok: true,
       enqueued: true,
-      jobId: OPENCLAW_CRON_JOB_ID,
+      jobId: process.env.XBRIEF_CRON_JOB_ID || "not-configured",
       output: stdout,
     })
   } catch (error) {

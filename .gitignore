@@ -5,6 +5,8 @@ __pycache__/
 *.pyo
 .cache/
 data/
+timeline_scans
+timeline_scans/
 *.egg-info/
 dist/
 build/

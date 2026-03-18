@@ -51,16 +51,16 @@ Pipeline output:
 
 ## The 3-tab briefing system (v2)
 
-### 1) Can't Miss 🔥
-**Philosophy:** rare, globally important, high-substance moments only.
+### 1) TL;DR ⚡
+**Philosophy:** a quick AI-generated summary of the most important things happening.
 
-Quality gates:
+Instead of showing individual posts, this tab generates a summary paragraph from the highest-signal content. Quality gates filter what feeds the summary:
 - density score >= 3
 - likes >= 10,000 and views >= 500,000
 - quality ratio `(bookmarks + replies) / likes >= 5%`
 - max 1 post per author
 
-If empty: **"Nothing major happened. Go live your life. ✌️"**
+If nothing noteworthy happened: **"Nothing major happened. Go live your life. ✌️"**
 
 ### 2) For You 📌
 **Philosophy:** useful posts tailored to your interests, with breadth.
@@ -209,6 +209,52 @@ Typical schedule:
 1. browser/agent writes scan JSON into `timeline_scans/`
 2. cron runs pipeline
 3. web UI auto-refreshes from latest JSON
+
+---
+
+## Self-hosting with OpenClaw
+
+X Brief was built to run with [OpenClaw](https://openclaw.com) — an AI agent platform that can automate browser tasks. Here's how the full automated pipeline works:
+
+### How scanning works
+
+An OpenClaw agent opens a real browser, logs into your X account, and scrolls through your For You and Following feeds. It extracts posts and saves them as JSON scan files. The pipeline then processes those scans into a briefing.
+
+### Setting up the cron job
+
+1. **Create an OpenClaw cron job** that runs every 4 hours:
+   - The cron prompt should instruct the agent to: open X, scroll the For You tab, scroll the Following tab, extract posts, save scan JSON to `timeline_scans/`, then run the pipeline
+   - Recommended schedule: `0 */4 * * *`
+
+2. **Create a wrapper script** that triggers the cron job:
+   ```bash
+   #!/bin/bash
+   export OPENCLAW_GATEWAY_TOKEN="your-gateway-token"
+   openclaw cron run <your-cron-job-id>
+   ```
+
+3. **Set environment variables** in `web/.env.local`:
+   ```
+   XBRIEF_SCAN_COMMAND=/path/to/your/trigger-script.sh
+   XBRIEF_CRON_JOB_ID=your-cron-job-id
+   OPENCLAW_GATEWAY_TOKEN=your-gateway-token
+   ```
+
+4. The web UI scan button calls your wrapper script to trigger an on-demand scan (with a 15-minute cooldown).
+
+### Config file setup
+
+```bash
+cp configs/example.json configs/my-config.json
+```
+
+Edit with your details:
+- **`tracked_accounts`**: X handles you follow and want prioritized
+- **`recent_interests`**: topics you care about — **this is critical**. Without it, the For You tab will be empty because no posts will match your interests.
+
+### Will this get me banned on X?
+
+Unlikely. The agent only reads your timeline — it never likes, reposts, follows, or posts. It's the same as scrolling your feed, just automated. That said, use at your own risk.
 
 ---
 
