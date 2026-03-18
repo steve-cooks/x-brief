@@ -42,3 +42,4 @@ OPENSOURCE_*.md
 !web/public/
 SPEC-v2-curation.md
 CHANGES.md
+scripts/trigger-scan.sh
