@@ -219,6 +219,22 @@ async def run_briefing_from_scans(
         return fail_pipeline(str(exc) or exc.__class__.__name__)
 
 
+def _preserve_rabbit_tldr(auto_tldr: str) -> str:
+    """Keep Rabbit's hand-written TL;DR if it exists in the current briefing file."""
+    try:
+        import json as _json
+        from pathlib import Path
+        existing = _json.loads(Path("data/latest-briefing.json").read_text())
+        existing_tldr = existing.get("tldr", "")
+        # Rabbit's TL;DRs are proper sentences (contain periods, dashes, or are 50+ chars)
+        # Auto-generated ones are just stitched fragments
+        if existing_tldr and len(existing_tldr) > 50 and ("—" in existing_tldr or ". " in existing_tldr):
+            return existing_tldr
+    except Exception:
+        pass
+    return auto_tldr
+
+
 def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
     """Export briefing as JSON for the web frontend."""
     sections = []
@@ -315,7 +331,7 @@ def export_briefing_json(briefing, users_map: dict, hours: int) -> dict:
         "period_hours": hours,
         "sections": sections,
         "stats": briefing.stats,
-        "tldr": briefing.tldr,
+        "tldr": _preserve_rabbit_tldr(briefing.tldr),
     }
 
 
