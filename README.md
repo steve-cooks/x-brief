@@ -4,6 +4,8 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> Your read-only X account that stops you from doomscrolling.
+
 > Replace 2 hours of compulsive scrolling with a 5-minute brief.
 
 X Brief is an **anti-scrolling-addiction tool** for X/Twitter.
