@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useMemo, useState } from "react"
 import { RichText, parsePostText } from "@/components/x-brief/rich-text"
-import { MediaGrid, type MediaItem, proxyUrl } from "@/components/x-brief/media-grid"
+import { hasUsableMediaUrl, MediaGrid, type MediaItem, proxyUrl } from "@/components/x-brief/media-grid"
 import { ArticleCard, ArticleReaderModal, EnrichedLinkCard, type LinkCardData, SimpleLinkCard } from "@/components/x-brief/link-card"
 import { MetricsBar, type PostMetrics } from "@/components/x-brief/metrics-bar"
 
@@ -221,7 +221,8 @@ export function PostCard({
   const displayTime = formatTimestamp(createdAt, timestamp)
 
   const hasLinkCard = !!linkCard
-  const hasMedia = media && media.length > 0
+  const validMedia = media?.filter(hasUsableMediaUrl) ?? []
+  const hasMedia = validMedia.length > 0
 
   const textSegments = useMemo(() => parsePostText(displayText), [displayText])
   const firstUrl = useMemo(() => {
@@ -233,9 +234,9 @@ export function PostCard({
   }, [textSegments, hasLinkCard, hasMedia])
 
   const handleImageClick = (url: string) => {
-    if (onMediaOpen && media && media.length > 0) {
-      const index = media.findIndex((m) => m.url === url)
-      onMediaOpen(media, index >= 0 ? index : 0)
+    if (onMediaOpen && validMedia.length > 0) {
+      const index = validMedia.findIndex((item) => item.url === url)
+      onMediaOpen(validMedia, index >= 0 ? index : 0)
     } else {
       window.open(url, "_blank", "noopener,noreferrer")
     }
@@ -303,7 +304,7 @@ export function PostCard({
           </p>
         </div>
 
-        {hasMedia && <MediaGrid media={media!} onImageClick={handleImageClick} onMediaOpen={onMediaOpen} />}
+        {hasMedia && <MediaGrid media={validMedia} onImageClick={handleImageClick} onMediaOpen={onMediaOpen} />}
 
         {/* Article posts get a rich card that opens the in-app reader */}
         {is_article ? (

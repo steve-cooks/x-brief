@@ -9,6 +9,10 @@ export interface MediaItem {
   alt_text?: string
 }
 
+export function hasUsableMediaUrl(item: MediaItem | undefined | null): boolean {
+  return Boolean(item?.url || item?.preview_image_url || item?.video_url)
+}
+
 /** Proxy Twitter media URLs through our API to avoid referer blocking */
 export function proxyUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined
@@ -27,16 +31,17 @@ export function MediaGrid({
   onImageClick?: (url: string) => void
   onMediaOpen?: (items: MediaItem[], index: number) => void
 }) {
-  const count = media.length
+  const validMedia = media.filter(hasUsableMediaUrl)
+  const count = validMedia.length
 
   if (count === 0) return null
 
   if (count === 1) {
     return (
       <SingleMedia
-        item={media[0]}
+        item={validMedia[0]}
         onImageClick={onImageClick}
-        onMediaOpen={onMediaOpen ? () => onMediaOpen(media, 0) : undefined}
+        onMediaOpen={onMediaOpen ? () => onMediaOpen(validMedia, 0) : undefined}
       />
     )
   }
@@ -44,13 +49,13 @@ export function MediaGrid({
   if (count === 2) {
     return (
       <div className="mt-3 w-full max-w-full grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-border">
-        {media.map((item, i) => (
+        {validMedia.map((item, i) => (
           <div key={i} className="relative aspect-square bg-accent overflow-hidden">
             <MediaContent
               item={item}
               fill
               onImageClick={onImageClick}
-              onMediaOpen={onMediaOpen ? () => onMediaOpen(media, i) : undefined}
+              onMediaOpen={onMediaOpen ? () => onMediaOpen(validMedia, i) : undefined}
             />
           </div>
         ))}
@@ -66,26 +71,26 @@ export function MediaGrid({
       >
         <div className="relative row-span-2 bg-accent overflow-hidden">
           <MediaContent
-            item={media[0]}
+            item={validMedia[0]}
             fill
             onImageClick={onImageClick}
-            onMediaOpen={onMediaOpen ? () => onMediaOpen(media, 0) : undefined}
+            onMediaOpen={onMediaOpen ? () => onMediaOpen(validMedia, 0) : undefined}
           />
         </div>
         <div className="relative bg-accent overflow-hidden">
           <MediaContent
-            item={media[1]}
+            item={validMedia[1]}
             fill
             onImageClick={onImageClick}
-            onMediaOpen={onMediaOpen ? () => onMediaOpen(media, 1) : undefined}
+            onMediaOpen={onMediaOpen ? () => onMediaOpen(validMedia, 1) : undefined}
           />
         </div>
         <div className="relative bg-accent overflow-hidden">
           <MediaContent
-            item={media[2]}
+            item={validMedia[2]}
             fill
             onImageClick={onImageClick}
-            onMediaOpen={onMediaOpen ? () => onMediaOpen(media, 2) : undefined}
+            onMediaOpen={onMediaOpen ? () => onMediaOpen(validMedia, 2) : undefined}
           />
         </div>
       </div>
@@ -97,13 +102,13 @@ export function MediaGrid({
       className="mt-3 w-full max-w-full grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-border"
       style={{ aspectRatio: "16/9" }}
     >
-      {media.slice(0, 4).map((item, i) => (
+      {validMedia.slice(0, 4).map((item, i) => (
         <div key={i} className="relative bg-accent overflow-hidden">
           <MediaContent
             item={item}
             fill
             onImageClick={onImageClick}
-            onMediaOpen={onMediaOpen ? () => onMediaOpen(media, i) : undefined}
+            onMediaOpen={onMediaOpen ? () => onMediaOpen(validMedia, i) : undefined}
           />
         </div>
       ))}
@@ -120,6 +125,8 @@ export function SingleMedia({
   onImageClick?: (url: string) => void
   onMediaOpen?: () => void
 }) {
+  if (!hasUsableMediaUrl(item)) return null
+
   if (item.type === "photo" && item.url) {
     return (
       <div className="mt-3 w-full max-w-full rounded-2xl overflow-hidden border border-border">
@@ -166,6 +173,8 @@ function MediaContent({
   onImageClick?: (url: string) => void
   onMediaOpen?: () => void
 }) {
+  if (!hasUsableMediaUrl(item)) return null
+
   if (item.type === "photo" && item.url) {
     return (
       <img

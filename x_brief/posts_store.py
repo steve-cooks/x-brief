@@ -118,6 +118,13 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
         author = post.get("authorName") or post.get("author_name") or post.get("name") or handle
         text = post.get("text") or post.get("full_text") or ""
         url = post.get("postUrl") or post.get("url") or f"https://x.com/{handle}/status/{post_id}"
+        raw_media = post.get("media") or []
+        media = [
+            item
+            for item in raw_media
+            if isinstance(item, dict)
+            and (item.get("url") or item.get("preview_image_url") or item.get("video_url"))
+        ]
 
 
         normalized.append(
@@ -132,7 +139,7 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
                 "seen": False,
                 "authorAvatarUrl": post.get("authorAvatarUrl") or post.get("avatar_url") or post.get("profile_image_url") or "",
                 "verified": "blue" if (post.get("is_verified") or post.get("verified")) else None,
-                "media": post.get("media") or [],
+                "media": media,
                 "metrics": post.get("metrics") or {},
                 "source": source,
                 "is_article": bool(post.get("is_article")),
