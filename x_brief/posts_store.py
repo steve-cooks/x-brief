@@ -98,7 +98,7 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
             continue
 
         handle = (
-            post.get("authorUsername") or post.get("screen_name") or post.get("handle") or ""
+            post.get("authorUsername") or post.get("author_handle") or post.get("screen_name") or post.get("handle") or ""
         ).lstrip("@")
         author = post.get("authorName") or post.get("author_name") or post.get("name") or handle
         text = post.get("text") or post.get("full_text") or ""

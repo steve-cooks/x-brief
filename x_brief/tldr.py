@@ -7,6 +7,15 @@ Output written to data/latest-briefing.json:
 import argparse
 import json
 import os
+from pathlib import Path
+
+# Load .env from project root
+_env_file = Path(__file__).parent.parent / ".env"
+if _env_file.exists():
+    for line in _env_file.read_text().splitlines():
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip())
 from datetime import datetime, timezone
 from pathlib import Path
 
