@@ -19,15 +19,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def _load_following_handles() -> set:
-    """Load Steve's following list as a lowercase set of handles."""
-    path = Path("/home/cluvis/projects/second-brain/steve_following.json")
-    try:
-        data = json.loads(path.read_text())
-        return {h.lower().lstrip("@") for h in data.get("handles", [])}
-    except Exception:
-        return set()  # If file missing, don't filter (fail open)
-
 
 POSTS_FILE = "posts.json"
 
@@ -101,7 +92,6 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
     raw_posts = scan_data.get("timeline") or scan_data.get("posts") or []
     now = datetime.now(timezone.utc).isoformat()
     normalized = []
-    following_handles = _load_following_handles() if tab == "following" else set()
 
     for post in raw_posts:
         post_id = str(post.get("id") or post.get("status_id") or post.get("tweetId") or "")
@@ -129,9 +119,6 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
         text = post.get("text") or post.get("full_text") or ""
         url = post.get("postUrl") or post.get("url") or f"https://x.com/{handle}/status/{post_id}"
 
-        if normalized_tab == "following" and following_handles:
-            if handle.lower() not in following_handles:
-                continue  # Skip - not someone Steve follows
 
         normalized.append(
             {
