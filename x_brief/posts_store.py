@@ -123,11 +123,16 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
         for item in raw_media:
             if not isinstance(item, dict):
                 continue
-            if not (item.get("url") or item.get("preview_image_url") or item.get("video_url")):
+            url_str = item.get("url", "") or item.get("preview_image_url", "") or item.get("video_url", "") or ""
+            if not url_str:
+                continue
+            # Skip x.com/photo/ redirect URLs — not loadable, need actual CDN URLs
+            if "x.com" in url_str and "/photo/" in url_str:
+                continue
+            if "twitter.com" in url_str and "/photo/" in url_str:
                 continue
             # Fix: video thumbnails from X use amplify_video_thumb URLs but get saved as "photo"
             # Detect and correct the type so the UI renders a video player instead of an image
-            url_str = item.get("url", "") or item.get("preview_image_url", "") or ""
             if item.get("type") == "photo" and "amplify_video_thumb" in url_str:
                 item = dict(item)  # don't mutate original
                 item["type"] = "video"
