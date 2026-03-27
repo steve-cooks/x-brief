@@ -119,12 +119,22 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
         text = post.get("text") or post.get("full_text") or ""
         url = post.get("postUrl") or post.get("url") or f"https://x.com/{handle}/status/{post_id}"
         raw_media = post.get("media") or []
-        media = [
-            item
-            for item in raw_media
-            if isinstance(item, dict)
-            and (item.get("url") or item.get("preview_image_url") or item.get("video_url"))
-        ]
+        media = []
+        for item in raw_media:
+            if not isinstance(item, dict):
+                continue
+            if not (item.get("url") or item.get("preview_image_url") or item.get("video_url")):
+                continue
+            # Fix: video thumbnails from X use amplify_video_thumb URLs but get saved as "photo"
+            # Detect and correct the type so the UI renders a video player instead of an image
+            url_str = item.get("url", "") or item.get("preview_image_url", "") or ""
+            if item.get("type") == "photo" and "amplify_video_thumb" in url_str:
+                item = dict(item)  # don't mutate original
+                item["type"] = "video"
+                item["video_url"] = item.get("video_url") or ""
+                item["preview_image_url"] = url_str
+                item["url"] = url_str
+            media.append(item)
 
 
         normalized.append(
