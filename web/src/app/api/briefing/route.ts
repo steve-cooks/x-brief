@@ -120,6 +120,7 @@ function buildFallbackBriefing(posts: StoredPost[], briefing?: BriefingPayload) 
       emoji: "📌",
       posts: unseenPosts
         .filter((post) => post.tab === "foryou")
+        .slice(0, 10)
         .map((post) => ({
           authorName: post.author,
           authorUsername: post.handle,
@@ -145,6 +146,7 @@ function buildFallbackBriefing(posts: StoredPost[], briefing?: BriefingPayload) 
       emoji: "👥",
       posts: unseenPosts
         .filter((post) => post.tab === "following")
+        .slice(0, 10)
         .map((post) => ({
           authorName: post.author,
           authorUsername: post.handle,
