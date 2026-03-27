@@ -4,21 +4,28 @@
 
 X Brief is a local-first scan pipeline plus web renderer.
 
-1. Timeline scans are written as JSON snapshots.
-2. Python pipeline ingests, scores, and curates posts.
-3. Pipeline exports JSON artifacts to `data/`.
-4. Next.js app reads those artifacts and renders the briefing UI.
+1. Rabbit (OpenClaw) scrapes X in real browser -> writes `timeline_scans/*.json`
+2. Python pipeline ingests scan -> appends to `data/posts.json` (deduped)
+3. TL;DR generator reads unseen posts -> calls LLM -> writes `data/latest-briefing.json`
+4. Next.js app reads `data/posts.json` and `data/latest-briefing.json`
+5. When user views posts, web marks them `seen: true` in `data/posts.json`
+6. Midnight cron clears `data/posts.json` for daily reset
 
-```text
-timeline_scans/*.json
-  -> x_brief.scan_reader.load_scan_posts()
-  -> x_brief.dedup.filter_already_briefed()
-  -> x_brief.curator.curate_briefing()
-  -> x_brief.pipeline.export_briefing_json()
-  -> data/latest-briefing.json + data/pipeline-status.json
-  -> web/src/app/api/briefing/route.ts
-  -> web/src/components/briefing-view.tsx
-```
+New pipeline (v3):
+  timeline_scans/*.json
+    -> x_brief.posts_store.ingest_scan_file()
+    -> data/posts.json (append, dedup by ID)
+    -> x_brief.tldr.run_tldr()
+    -> data/latest-briefing.json
+    -> /api/posts + /api/briefing routes
+    -> web/src/components/briefing-view.tsx
+
+Legacy pipeline (v2, still available):
+  timeline_scans/*.json
+    -> x_brief.scan_reader.load_scan_posts()
+    -> x_brief.curator.curate_briefing()
+    -> x_brief.pipeline.export_briefing_json()
+    -> data/latest-briefing.json (v2 format with sections[])
 
 ---
 
