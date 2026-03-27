@@ -38,19 +38,18 @@ def generate_tldr(unseen_posts: list) -> str:
 
         message = client.messages.create(
             model="claude-haiku-4-5",
-            max_tokens=300,
+            max_tokens=200,
             messages=[
                 {
                     "role": "user",
                     "content": (
-                        "You're summarizing X/Twitter posts for a friend. Write 3-5 casual sentences "
-                        "about what's happening. Be opinionated, specific, name accounts. Sound like "
+                        "You're summarizing X/Twitter posts for a friend. Write EXACTLY 2-3 short sentences maximum "
+                        "about what's happening. Be punchy, not comprehensive. Be opinionated, specific, name accounts. Sound like "
                         "texting a friend, not a news article.\n\n"
                         'Example tone: "Karpathy is warning about LiteLLM being compromised, Claude '
                         "Code just shipped auto mode, and everyone's dunking on Sora getting killed.\"\n\n"
                         f"Posts to summarize:\n{posts_text}\n\n"
-                        "Write the summary now (3-5 sentences, casual, no intro like "
-                        '"here\'s what\'s happening"):'
+                        "Write the summary now (2-3 sentences max, casual, punchy):"
                     ),
                 }
             ],

@@ -97,6 +97,20 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
         if not post_id:
             continue
 
+        raw_source = post.get("source")
+        source = raw_source.strip().lower().replace("-", "_").replace(" ", "_") if isinstance(raw_source, str) else None
+        if source not in {"for_you", "foryou", "following"}:
+            source = None
+
+        if tab == "following":
+            normalized_tab = "following"
+        elif tab in {"for_you", "foryou"}:
+            normalized_tab = "foryou"
+        elif source == "following":
+            normalized_tab = "following"
+        else:
+            normalized_tab = "foryou"
+
         handle = (
             post.get("authorUsername") or post.get("author_handle") or post.get("screen_name") or post.get("handle") or ""
         ).lstrip("@")
@@ -111,9 +125,20 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
                 "handle": handle,
                 "text": text,
                 "url": url,
-                "tab": tab,
+                "tab": normalized_tab,
                 "scraped_at": post.get("scraped_at") or post.get("created_at") or now,
                 "seen": False,
+                "authorAvatarUrl": post.get("authorAvatarUrl") or post.get("avatar_url") or post.get("profile_image_url") or "",
+                "verified": "blue" if (post.get("is_verified") or post.get("verified")) else None,
+                "media": post.get("media") or [],
+                "metrics": post.get("metrics") or {},
+                "source": source,
+                "is_article": bool(post.get("is_article")),
+                "article_url": post.get("article_url"),
+                "thread_posts": post.get("thread_posts") or [],
+                "quotedPost": post.get("quotedPost"),
+                "linkCard": post.get("linkCard"),
+                "communityNote": post.get("communityNote"),
             }
         )
 

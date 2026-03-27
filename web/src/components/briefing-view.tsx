@@ -110,7 +110,7 @@ const SECTION_DISPLAY: Record<string, { label: string; id: string; emptyMessage:
   "Following 👥": {
     label: "Following",
     id: "following",
-    emptyMessage: "Your follows haven't posted much. That's okay.",
+    emptyMessage: "No new posts from people you follow yet.",
   },
 }
 

@@ -5,6 +5,55 @@ import { fileURLToPath } from "url"
 
 export const dynamic = "force-dynamic"
 
+interface MediaItem {
+  type: string
+  url?: string
+  preview_image_url?: string
+  video_url?: string
+  alt_text?: string
+}
+
+interface Metrics {
+  likes?: number
+  reposts?: number
+  views?: number
+  replies?: number
+  bookmarks?: number
+}
+
+interface ThreadPost {
+  id?: string | null
+  text: string
+  url?: string | null
+}
+
+interface QuotedPost {
+  authorName: string
+  authorUsername: string
+  authorAvatarUrl?: string
+  verified?: string | null
+  text: string
+  media?: MediaItem[]
+  metrics?: Metrics
+  postUrl?: string
+  timestamp?: string
+  createdAt?: string
+  linkCard?: LinkCard
+}
+
+interface LinkCard {
+  title: string
+  description?: string
+  thumbnail?: string | null
+  domain?: string
+  url?: string
+}
+
+interface CommunityNote {
+  text: string
+  url?: string | null
+}
+
 interface Post {
   id: string
   author: string
@@ -14,6 +63,17 @@ interface Post {
   tab: string
   scraped_at: string
   seen: boolean
+  authorAvatarUrl?: string
+  verified?: string | null
+  media?: MediaItem[]
+  metrics?: Metrics
+  source?: "for_you" | "following" | null
+  is_article?: boolean
+  article_url?: string | null
+  thread_posts?: ThreadPost[]
+  quotedPost?: QuotedPost
+  linkCard?: LinkCard
+  communityNote?: CommunityNote | null
 }
 
 function getPostsPath() {
