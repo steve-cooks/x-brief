@@ -370,7 +370,7 @@ export function BriefingView() {
         })
 
         const basePosts = unread.length > 0 ? unread : s.posts
-        const postsToShow = basePosts.filter(matchesSearch)
+        const postsToShow = basePosts.filter(matchesSearch).slice(0, 10)
 
         return {
           ...display,

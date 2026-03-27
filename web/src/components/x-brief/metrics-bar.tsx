@@ -3,6 +3,7 @@ import { Bookmark, Eye, Heart, MessageCircle, Repeat2 } from "lucide-react"
 export interface PostMetrics {
   likes?: number
   reposts?: number
+  retweets?: number
   views?: number
   replies?: number
   bookmarks?: number
@@ -26,11 +27,11 @@ export function MetricsBar({ metrics }: { metrics: PostMetrics }) {
     },
     {
       key: "reposts",
-      value: metrics.reposts ?? 0,
+      value: metrics.reposts ?? metrics.retweets ?? 0,
       Icon: Repeat2,
       className: "hover:text-[#00ba7c]",
       iconBgClass: "group-hover/metric:bg-[#00ba7c]/10",
-      show: (metrics.reposts ?? 0) > 0,
+      show: (metrics.reposts ?? metrics.retweets ?? 0) > 0,
     },
     {
       key: "likes",
