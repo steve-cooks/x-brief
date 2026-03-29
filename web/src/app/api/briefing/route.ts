@@ -5,6 +5,16 @@ import { fileURLToPath } from "url"
 
 export const dynamic = "force-dynamic"
 
+async function loadReadIds(dataDir: string): Promise<Set<string>> {
+  try {
+    const raw = await readFile(join(dataDir, "read-state.json"), "utf-8")
+    const parsed = JSON.parse(raw)
+    return new Set(Array.isArray(parsed?.ids) ? parsed.ids : [])
+  } catch {
+    return new Set()
+  }
+}
+
 interface MediaItem {
   type: string
   url?: string
@@ -122,6 +132,7 @@ function buildFallbackBriefing(posts: StoredPost[], briefing?: BriefingPayload) 
         .filter((post) => post.tab === "foryou")
         .slice(0, 10)
         .map((post) => ({
+          id: post.id,
           authorName: post.author,
           authorUsername: post.handle,
           authorAvatarUrl: post.authorAvatarUrl,
@@ -148,6 +159,7 @@ function buildFallbackBriefing(posts: StoredPost[], briefing?: BriefingPayload) 
         .filter((post) => post.tab === "following")
         .slice(0, 10)
         .map((post) => ({
+          id: post.id,
           authorName: post.author,
           authorUsername: post.handle,
           authorAvatarUrl: post.authorAvatarUrl,
@@ -193,6 +205,22 @@ export async function GET() {
   ]
   const postsPaths = [join(dataDir, "posts.json"), join(process.cwd(), "..", "data", "posts.json")]
 
+  const readIds = await loadReadIds(dataDir)
+
+  // Filter posts within a briefing section by read-state and 24h scan age
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000
+  function filterSection(posts: unknown[]): unknown[] {
+    return posts.filter((post) => {
+      const p = post as Record<string, unknown>
+      const id = typeof p.id === "string" ? p.id : null
+      if (id && readIds.has(id)) return false
+      const ts = typeof p.timestamp === "string" ? new Date(p.timestamp).getTime() : 0
+      const createdAt = typeof p.createdAt === "string" ? new Date(p.createdAt).getTime() : 0
+      const scannedAt = ts || createdAt
+      return scannedAt === 0 || scannedAt >= cutoff
+    })
+  }
+
   let latestBriefing: BriefingPayload | null = null
 
   for (const briefingPath of briefingPaths) {
@@ -200,7 +228,15 @@ export async function GET() {
       const data = await readFile(briefingPath, "utf-8")
       latestBriefing = JSON.parse(data)
       if (Array.isArray(latestBriefing?.sections) && latestBriefing.sections.length > 0) {
-        return NextResponse.json(latestBriefing)
+        // Filter each section's posts by read-state + 24h cutoff
+        const filtered = {
+          ...latestBriefing,
+          sections: latestBriefing.sections.map((section) => ({
+            ...section,
+            posts: filterSection(section.posts ?? []),
+          })),
+        }
+        return NextResponse.json(filtered)
       }
       break
     } catch {
@@ -211,9 +247,15 @@ export async function GET() {
   for (const postsPath of postsPaths) {
     try {
       const data = await readFile(postsPath, "utf-8")
-      const posts = JSON.parse(data)
+      const posts: StoredPost[] = JSON.parse(data)
       if (Array.isArray(posts)) {
-        return NextResponse.json(buildFallbackBriefing(posts, latestBriefing ?? undefined))
+        // Filter by read-state and 24h cutoff before building fallback briefing
+        const filtered = posts.filter((p) => {
+          if (readIds.has(p.id) || p.seen) return false
+          const scannedAt = p.scraped_at ? new Date(p.scraped_at).getTime() : 0
+          return scannedAt === 0 || scannedAt >= cutoff
+        })
+        return NextResponse.json(buildFallbackBriefing(filtered, latestBriefing ?? undefined))
       }
     } catch {
       // Try next fallback path.
