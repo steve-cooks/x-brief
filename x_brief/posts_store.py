@@ -139,6 +139,24 @@ def ingest_scan_file(scan_path, data_dir, tab: str) -> int:
                 item["video_url"] = item.get("video_url") or ""
                 item["preview_image_url"] = url_str
                 item["url"] = url_str
+
+            # Fix: reject mismatched video thumbnail + video_url pairs.
+            # X CDN URLs contain the source media ID. If the thumbnail ID and
+            # video_url ID don't match, Rabbit scraped them from different posts.
+            # Drop the thumbnail in that case rather than show the wrong image.
+            if item.get("type") == "video":
+                item = dict(item)
+                vid_url = item.get("video_url", "")
+                thumb_url = item.get("preview_image_url", "")
+                import re as _re
+                def _extract_media_id(u):
+                    m = _re.search(r"/(amplify_video_thumb|amplify_video|ext_tw_video)/(\d+)/", u or "")
+                    return m.group(2) if m else None
+                vid_id = _extract_media_id(vid_url)
+                thumb_id = _extract_media_id(thumb_url)
+                if vid_id and thumb_id and vid_id != thumb_id:
+                    item["preview_image_url"] = ""  # clear mismatched thumbnail
+
             media.append(item)
 
 
