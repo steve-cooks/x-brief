@@ -26,7 +26,7 @@ Core principle: **substance over dopamine**.
 3. `python3 -m x_brief.posts_store --ingest <scan_file> --tab <tab>` appends new posts (deduped) to `data/posts.json`
 4. `python3 -m x_brief.tldr` reads unseen posts -> calls LLM -> writes `data/latest-briefing.json`
 5. Web UI reads `data/posts.json` (via /api/posts) and `data/latest-briefing.json` (via /api/briefing)
-6. When user views a post, UI calls POST /api/posts with `{ ids: [...] }` to mark as seen
+6. When user views a post, UI calls POST /api/read-state with `{ ids: [...] }` to mark as seen
 
 ## Key commands
 
@@ -60,12 +60,11 @@ Outputs:
 
 - `X_BRIEF_DATA_DIR` (optional) - data directory (default: `data/`)
 - `ANTHROPIC_API_KEY` - required for TL;DR generation
-- `XBRIEF_CRON_JOB_ID` - OpenClaw cron job ID (used by web UI)
-- `OPENCLAW_GATEWAY_TOKEN` - gateway auth token (used by scan wrapper script)
 
 ## Important notes
 
 - Rabbit writes scan files; Python pipeline ingests them - these are separate steps
 - See `CRON_INSTRUCTIONS.md` for the exact cron messages to use
 - The old scoring/curation pipeline (`x_brief/pipeline.py`) still exists as fallback but is not the primary path
-- `data/read-state.json` is legacy - new seen-state lives in `data/posts.json`
+- `data/read-state.json` tracks server-side seen post IDs (synced with client localStorage)
+- No manual scan button — scans happen only via OpenClaw cron (every 4 hours)

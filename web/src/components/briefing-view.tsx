@@ -5,7 +5,7 @@ import { useTheme } from "next-themes"
 import { PostCard } from "@/components/x-brief/post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { RefreshCw, Sun, Moon, AlertTriangle, Search, X } from "lucide-react"
+import { Sun, Moon, AlertTriangle, Search, X } from "lucide-react"
 import { useSwipeTabs } from "@/hooks/use-swipe-tabs"
 import { MediaViewer } from "@/components/media-viewer"
 import { markPostsAsRead, getReadPostIds, clearOldReadState } from "@/lib/read-state"
@@ -91,11 +91,6 @@ interface AvailableTab {
   emptyMessage: string
 }
 
-interface RefreshFeedback {
-  type: "success" | "error"
-  text: string
-}
-
 const SECTION_DISPLAY: Record<string, { label: string; id: string; emptyMessage: string }> = {
   "Can't Miss 🔥": {
     label: "TL;DR",
@@ -178,8 +173,6 @@ function postIdFromUrl(postUrl?: string): string | null {
 export function BriefingView() {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [refreshFeedback, setRefreshFeedback] = useState<RefreshFeedback | null>(null)
   const [minutesAgo, setMinutesAgo] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<string>("")
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
@@ -191,8 +184,6 @@ export function BriefingView() {
   } | null>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const pendingReadRef = useRef<Set<string>>(new Set())
-  const refreshFeedbackTimeoutRef = useRef<number | null>(null)
-
   useEffect(() => {
     let cancelled = false
 
@@ -270,26 +261,6 @@ export function BriefingView() {
       { threshold: 0.5 }
     )
     return () => observerRef.current?.disconnect()
-  }, [])
-
-  const showRefreshFeedback = useCallback((type: RefreshFeedback["type"], text: string) => {
-    if (refreshFeedbackTimeoutRef.current) {
-      window.clearTimeout(refreshFeedbackTimeoutRef.current)
-    }
-
-    setRefreshFeedback({ type, text })
-    refreshFeedbackTimeoutRef.current = window.setTimeout(() => {
-      setRefreshFeedback(null)
-      refreshFeedbackTimeoutRef.current = null
-    }, type === "error" ? 4000 : 2500)
-  }, [])
-
-  useEffect(() => {
-    return () => {
-      if (refreshFeedbackTimeoutRef.current) {
-        window.clearTimeout(refreshFeedbackTimeoutRef.current)
-      }
-    }
   }, [])
 
   const fetchBriefing = useCallback(async () => {
@@ -403,39 +374,6 @@ export function BriefingView() {
     trackEvent("tab_switch", { tab })
   }, [])
 
-  const handleRefresh = useCallback(async () => {
-    if (refreshing) return
-
-    setRefreshing(true)
-    try {
-      const response = await fetch("/api/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      })
-
-      const payload = (await response.json().catch(() => null)) as { error?: string; details?: unknown } | null
-
-      if (!response.ok) {
-        const detailText =
-          typeof payload?.details === "string"
-            ? payload.details
-            : typeof payload?.error === "string"
-              ? payload.error
-              : "Failed to trigger scan."
-        throw new Error(detailText)
-      }
-
-      showRefreshFeedback("success", "Scan triggered! Data will refresh in a few minutes.")
-      await fetchBriefing()
-      setTimeout(() => void fetchBriefing(), 30000)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to trigger scan."
-      showRefreshFeedback("error", message)
-    } finally {
-      setRefreshing(false)
-    }
-  }, [fetchBriefing, refreshing, showRefreshFeedback])
-
   const swipeRef = useSwipeTabs({
     tabIds,
     activeTab,
@@ -488,35 +426,11 @@ export function BriefingView() {
             </div>
 
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-              {briefing && (
-                <button
-                  onClick={() => void handleRefresh()}
-                  disabled={refreshing}
-                  aria-label="Refresh briefing"
-                  className="flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full text-muted-foreground hover:bg-[rgba(29,155,240,0.1)] hover:text-[#1d9bf0] transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${refreshing ? "animate-spin" : ""}`} />
-                </button>
-              )}
               <ThemeToggle />
             </div>
           </div>
         </div>
       </header>
-
-      {refreshFeedback && (
-        <div className="fixed top-16 sm:top-[70px] left-1/2 z-[60] -translate-x-1/2 pointer-events-none px-4">
-          <div
-            className={`rounded-full px-4 py-2 text-sm font-semibold shadow-lg border backdrop-blur-md ${
-              refreshFeedback.type === "success"
-                ? "border-[#1d9bf0]/20 bg-[#1d9bf0]/12 text-[#1d9bf0]"
-                : "border-red-500/20 bg-red-500/12 text-red-600 dark:text-red-300"
-            }`}
-          >
-            {refreshFeedback.text}
-          </div>
-        </div>
-      )}
 
       {loading && <LoadingSkeleton />}
 
